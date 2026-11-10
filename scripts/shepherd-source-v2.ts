@@ -16,16 +16,17 @@
  * implementation selects: `isSourcePath` decides, and the reader walks the
  * trees and keeps exactly the paths it accepts.
  *
- * Each origin's revision carries a marker (C17): the framework's is the
- * lockfile's resolution of `troupe`, a commit for a Git dependency and the
- * resolution text marked `local` otherwise; the package's is its Git `HEAD`,
+ * Each origin's revision carries a marker (C17, C24): the framework's is the
+ * pin record's commit when the request, the lockfile and the installed
+ * bytes all agree with it (`frameworkMarking`), and the lockfile's text
+ * marked `local` otherwise; the package's is its Git `HEAD`,
  * marked `dirty` when the selected files differ from that commit's tree
  * under the prefix. Unlike v1's repository-wide `dirty`, only selected bytes
  * count.
  */
 
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type {
 	BuildStampPolicy,
@@ -47,7 +48,10 @@ const SOURCE_DOMAIN_V2 = "troupe-agent-source-v2";
 export const FRAMEWORK_ORIGIN = "framework/troupe";
 export const PACKAGE_ORIGIN = "package/shepherd";
 
-/** Package files every v2 Shepherd identity reads; each must exist. */
+/**
+ * Package files every v2 Shepherd identity reads. Each must exist except
+ * the pin record, which is selected when present.
+ */
 export const PACKAGE_FILES = [
 	".gitignore",
 	"agents/shepherd.md",
@@ -58,8 +62,12 @@ export const PACKAGE_FILES = [
 	"scripts/shepherd-definition.ts",
 	"scripts/shepherd-source-v2.ts",
 	"scripts/watch.ts",
+	"troupe-pin.json",
 	"tsconfig.json",
 ] as const;
+
+/** The pin record: Troupe's tag, commit, framework digest and proof list. */
+export const PIN_FILE = "troupe-pin.json";
 
 /**
  * Package trees selected recursively. Where `tests` is false, `*.test.ts`,
@@ -212,7 +220,10 @@ export function v2Inputs(layout: V2Layout): SourceInputDefinition[] {
 		{
 			origin: PACKAGE_ORIGIN,
 			root: layout.packageRoot,
-			files: PACKAGE_FILES,
+			files: PACKAGE_FILES.filter(
+				(path) =>
+					path !== PIN_FILE || existsSync(join(layout.packageRoot, PIN_FILE)),
+			),
 			trees: PACKAGE_TREES.map((tree) => ({ dir: tree.dir })),
 			// The reader keeps exactly what `isSourcePath` accepts.
 			exclude: (path) => !isSourcePath(path),
@@ -242,26 +253,205 @@ const GIT_SPECIFIER =
 	/^(github:|gitlab:|bitbucket:|git\+|git:\/\/|git@|ssh:\/\/|https?:\/\/[^#]*\.git(#|$))/;
 
 /**
- * The framework's revision as the lockfile resolves `troupe`: the commit of
- * a Git dependency, or the resolution itself (a folder, say) marked local.
- * The installed bytes of a Git dependency are not compared with the commit;
- * the digest still names them.
+ * The revision text the lockfile alone gives `troupe`: the commit of a Git
+ * resolution that records a full one, `unknown` for any other Git or GitHub
+ * resolution, or the resolution itself (a folder, say). It is never a
+ * verified revision; `frameworkMarking` decides the marker.
  */
-export function frameworkRevision(resolved: string | undefined): {
-	revision: string;
-	marker: OriginMarker;
-} {
+export function lockRevision(resolved: string | undefined): string {
 	const resolution = resolved?.startsWith("troupe@")
 		? resolved.slice("troupe@".length)
 		: undefined;
-	if (!resolution) return { revision: "unknown", marker: "local" };
+	if (!resolution) return "unknown";
 	if (GIT_SPECIFIER.test(resolution)) {
 		const commit = resolution.split("#").at(1) ?? "";
-		return FULL_COMMIT.test(commit)
-			? { revision: commit, marker: null }
-			: { revision: "unknown", marker: "local" };
+		return FULL_COMMIT.test(commit) ? commit : "unknown";
 	}
-	return { revision: resolution, marker: "local" };
+	return resolution;
+}
+
+/** One recorded proof of the pin: when, under which Bun, what ran, where its evidence is. */
+export interface PinProof {
+	date: string;
+	bun: string;
+	checks: string[];
+	evidence: string;
+}
+
+/**
+ * The pin record. `digest` is the framework origin's own digest of the
+ * library members at `commit` (`troupe-agent-origin-v2` framing), derived
+ * from the tag's Git tree by `scripts/pin-digest.ts`.
+ */
+export interface TroupePin {
+	tag: string;
+	commit: string;
+	owner: string;
+	repository: string;
+	digest: string;
+	proofs: PinProof[];
+}
+
+/** A pin record that exists but cannot be read as one. */
+export class PinError extends Error {
+	constructor(readonly problems: string[]) {
+		super(`${PIN_FILE}: ${problems.join("; ")}`);
+		this.name = "PinError";
+	}
+}
+
+const PIN_KEYS = ["commit", "digest", "owner", "proofs", "repository", "tag"];
+const PROOF_KEYS = ["bun", "checks", "date", "evidence"];
+const NAME = /^[A-Za-z0-9._-]+$/;
+
+function nonEmpty(value: unknown): value is string {
+	return typeof value === "string" && value.length > 0;
+}
+
+function keysProblem(
+	where: string,
+	value: Record<string, unknown>,
+	keys: string[],
+): string[] {
+	const found = Object.keys(value).sort();
+	return found.join() === keys.join()
+		? []
+		: [`${where} must have exactly the keys ${keys.join(", ")}`];
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** The pin record in `text`, or a `PinError` naming every problem. */
+export function parsePin(text: string): TroupePin {
+	let value: unknown;
+	try {
+		value = JSON.parse(text);
+	} catch (error) {
+		throw new PinError([`not JSON: ${(error as Error).message}`]);
+	}
+	if (!isObject(value)) throw new PinError(["not a JSON object"]);
+	const problems = keysProblem("the record", value, PIN_KEYS);
+	if (!nonEmpty(value.tag)) problems.push("tag must be a nonempty string");
+	if (typeof value.commit !== "string" || !FULL_COMMIT.test(value.commit))
+		problems.push("commit must be a full lowercase hex commit");
+	for (const key of ["owner", "repository"] as const) {
+		const name = value[key];
+		if (typeof name !== "string" || !NAME.test(name))
+			problems.push(`${key} must be a GitHub name`);
+	}
+	if (
+		typeof value.digest !== "string" ||
+		!/^sha256:[0-9a-f]{64}$/.test(value.digest)
+	)
+		problems.push("digest must be sha256:<64 lowercase hex>");
+	if (!Array.isArray(value.proofs)) {
+		problems.push("proofs must be an array");
+	} else {
+		value.proofs.forEach((proof, i) => {
+			const where = `proofs[${i}]`;
+			if (!isObject(proof)) return problems.push(`${where} must be an object`);
+			problems.push(...keysProblem(where, proof, PROOF_KEYS));
+			if (
+				typeof proof.date !== "string" ||
+				!/^\d{4}-\d{2}-\d{2}$/.test(proof.date)
+			)
+				problems.push(`${where}.date must be YYYY-MM-DD`);
+			if (!nonEmpty(proof.bun)) problems.push(`${where}.bun must be a version`);
+			if (
+				!Array.isArray(proof.checks) ||
+				proof.checks.length === 0 ||
+				!proof.checks.every(nonEmpty)
+			)
+				problems.push(`${where}.checks must list nonempty strings`);
+			if (!nonEmpty(proof.evidence))
+				problems.push(`${where}.evidence must be a nonempty string`);
+		});
+	}
+	if (problems.length > 0) throw new PinError(problems);
+	return value as unknown as TroupePin;
+}
+
+/** The package's pin record, or undefined when it has none. A malformed one is refused. */
+export function readPin(packageRoot: string): TroupePin | undefined {
+	const path = join(packageRoot, PIN_FILE);
+	if (!existsSync(path)) return undefined;
+	return parsePin(readFileSync(path, "utf8"));
+}
+
+/** A GitHub repository and ref named by a specifier or resolution. */
+function githubRef(
+	text: string,
+): { owner: string; repository: string; ref: string } | undefined {
+	const match =
+		/^(?:github:|(?:git\+)?(?:https|ssh):\/\/(?:git@)?github\.com\/|git@github\.com:)([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+?)(?:\.git)?#([0-9a-f]+)$/.exec(
+			text,
+		);
+	if (!match) return undefined;
+	const [, owner = "", repository = "", ref = ""] = match;
+	return { owner, repository, ref };
+}
+
+/**
+ * Whether the package's request and its lockfile both name the pin: the
+ * request at the pin's full commit, and the lock either at that full commit
+ * (a Git resolution) or, for Bun's GitHub tarball resolution, at a hex
+ * prefix of at least seven of it; both in the pin's owner and repository.
+ */
+export function namesPin(
+	dependency: { requested?: string; resolved?: string } | undefined,
+	pin: TroupePin,
+): boolean {
+	const same = (ref: ReturnType<typeof githubRef>) =>
+		ref !== undefined &&
+		ref.owner === pin.owner &&
+		ref.repository === pin.repository;
+	const requested = githubRef(dependency?.requested ?? "");
+	if (!same(requested) || requested?.ref !== pin.commit) return false;
+	const resolution = dependency?.resolved?.startsWith("troupe@")
+		? dependency.resolved.slice("troupe@".length)
+		: "";
+	const locked = githubRef(resolution);
+	if (!same(locked) || !locked) return false;
+	return resolution.startsWith("github:")
+		? locked.ref.length >= 7 && pin.commit.startsWith(locked.ref)
+		: locked.ref === pin.commit;
+}
+
+/**
+ * The framework's revision and marker (C24). The pin's full commit prints
+ * unmarked only when the request and the lockfile name the pin and the
+ * installed members hash to the pin's digest; with the names agreeing and
+ * the bytes not, it is marked `dirty`. With no pin, or no agreement, the
+ * lockfile's own revision text is marked `local`.
+ */
+export function frameworkMarking(
+	dependency: { requested?: string; resolved?: string } | undefined,
+	pin: TroupePin | undefined,
+	installedDigest: string,
+): { revision: string; marker: OriginMarker } {
+	if (!pin || !namesPin(dependency, pin)) {
+		return { revision: lockRevision(dependency?.resolved), marker: "local" };
+	}
+	return {
+		revision: pin.commit,
+		marker: installedDigest === pin.digest ? null : "dirty",
+	};
+}
+
+/** The framework origin's verified facts for a package and its installed Troupe. */
+export function frameworkFacts(layout: {
+	packageRoot: string;
+	troupeRoot: string;
+}): { revision: string; marker: OriginMarker } {
+	const [framework] = v2Inputs(layout);
+	if (!framework) throw new Error("v2 inputs name no framework origin");
+	return frameworkMarking(
+		framework.dependency,
+		readPin(layout.packageRoot),
+		readSourceInputs(framework).provenance.digest,
+	);
 }
 
 /** Git's object id for `bytes` as a blob, in the repository's hash. */
@@ -333,7 +523,11 @@ function markedOrigins(
 		if (input.origin === FRAMEWORK_ORIGIN) {
 			return {
 				...input.provenance,
-				...frameworkRevision(input.provenance.dependency?.resolved),
+				...frameworkMarking(
+					input.provenance.dependency,
+					readPin(layout.packageRoot),
+					input.provenance.digest,
+				),
 			};
 		}
 		return {

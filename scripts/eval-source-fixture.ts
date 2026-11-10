@@ -7,7 +7,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { createGitRunner, type GitRunner } from "troupe/provenance";
-import { PACKAGE_FILES } from "./shepherd-source-v2";
+import { PACKAGE_FILES, PIN_FILE } from "./shepherd-source-v2";
 
 export const TEST_GIT_ENV = {
 	GIT_CONFIG_GLOBAL: "/dev/null",
@@ -83,8 +83,9 @@ export const SAMPLE_SOURCE_PATHS: readonly string[] = [
 export const FIXTURE_FRAMEWORK_PATH = "scripts/build.ts";
 
 /**
- * Write every individually required package file plus one file in each
- * recursive selection, then `git init` and commit. Returns the revision.
+ * Write every individually required package file except the pin, plus one
+ * file in each recursive selection, then `git init` and commit. Returns the
+ * revision.
  * With `prefix`, the package files go beneath `<root>/<prefix>` and the
  * repository at `root` also holds a file outside the package.
  */
@@ -94,7 +95,10 @@ export function initShepherdRepo(
 	options: { prefix?: string } = {},
 ): string {
 	const files: Record<string, string> = {};
-	for (const path of PACKAGE_FILES) files[path] = `${path}\n`;
+	// No pin record: fixture packages print their framework `+local`.
+	for (const path of PACKAGE_FILES) {
+		if (path !== PIN_FILE) files[path] = `${path}\n`;
+	}
 	Object.assign(files, {
 		"agents/shepherd.md": SHEPHERD_DECLARATION,
 		"agents/shepherd.ts": SHEPHERD_EXTENSION,

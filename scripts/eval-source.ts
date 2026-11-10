@@ -40,8 +40,8 @@ import {
 import {
 	dependencyIdentity,
 	FRAMEWORK_ORIGIN,
-	frameworkRevision,
 	isSourcePath,
+	lockRevision,
 	type OriginMarker,
 	PACKAGE_ORIGIN,
 	readV2Source,
@@ -292,9 +292,10 @@ export function versionLine(provenance: BuildProvenance): string {
 			"a version line needs the package root its build was captured from",
 		]);
 	}
-	const framework = frameworkRevision(
-		dependencyIdentity(provenance.packageRoot).resolved,
-	);
+	const framework = {
+		revision: lockRevision(dependencyIdentity(provenance.packageRoot).resolved),
+		marker: "local" as const,
+	};
 	const marker: OriginMarker = !FULL_COMMIT.test(provenance.revision)
 		? "local"
 		: provenance.sourceDirty

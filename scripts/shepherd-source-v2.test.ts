@@ -5,6 +5,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	realpathSync,
 	rmSync,
 	symlinkSync,
@@ -15,6 +16,7 @@ import { dirname, join } from "node:path";
 import {
 	createGitRunner,
 	readSourceInputs,
+	type SourceInputDefinition,
 	SourceInputError,
 } from "troupe/provenance";
 import { PACKAGE_ROOT, troupeRoot } from "./shepherd-definition";
@@ -22,9 +24,13 @@ import {
 	dependencyIdentity,
 	evaluationInputs,
 	FRAMEWORK_ORIGIN,
-	frameworkRevision,
+	frameworkFacts,
 	isFrameworkPath,
 	isSourcePath,
+	lockRevision,
+	PinError,
+	parsePin,
+	readPin,
 	readV2Source,
 	shepherdStampV2,
 	type V2Layout,
@@ -431,49 +437,20 @@ describe("revision markers (C17)", () => {
 		expect((await line()).line).toContain(`package/shepherd=${head}+dirty `);
 	});
 
-	test("a Git dependency records the lockfile's commit with no marker", async () => {
+	test("lockfile resolutions give revision text, never a verified revision", () => {
 		const commit = "0123456789abcdef0123456789abcdef01234567";
-		put(
-			"package/bun.lock",
-			`{\n  "packages": {\n    "troupe": ["troupe@github:owner/troupe#${commit}", {},],\n  },\n}\n`,
+		expect(lockRevision(`troupe@github:owner/troupe#${commit}`)).toBe(commit);
+		expect(
+			lockRevision(`troupe@git+https://example.invalid/troupe.git#${commit}`),
+		).toBe(commit);
+		expect(lockRevision("troupe@github:owner/troupe#0123abc")).toBe("unknown");
+		expect(lockRevision("troupe@git+https://example.invalid/troupe.git")).toBe(
+			"unknown",
 		);
-		const { captured, line: version } = await line();
-		expect(version).toContain(` framework/troupe=${commit} `);
-		expect(captured.provenance.origins).toEqual([
-			expect.objectContaining({ revision: commit, marker: null }),
-			expect.anything(),
-		]);
-	});
-
-	test("lockfile resolutions map to a revision and marker", () => {
-		const commit = "0123456789abcdef0123456789abcdef01234567";
-		expect(frameworkRevision(`troupe@github:owner/troupe#${commit}`)).toEqual({
-			revision: commit,
-			marker: null,
-		});
-		expect(
-			frameworkRevision(
-				`troupe@git+https://example.invalid/troupe.git#${commit}`,
-			),
-		).toEqual({ revision: commit, marker: null });
-		expect(frameworkRevision("troupe@github:owner/troupe#0123abc")).toEqual({
-			revision: "unknown",
-			marker: "local",
-		});
-		expect(
-			frameworkRevision("troupe@git+https://example.invalid/troupe.git"),
-		).toEqual({
-			revision: "unknown",
-			marker: "local",
-		});
-		expect(frameworkRevision("troupe@file:../.troupe-dist/troupe")).toEqual({
-			revision: "file:../.troupe-dist/troupe",
-			marker: "local",
-		});
-		expect(frameworkRevision(undefined)).toEqual({
-			revision: "unknown",
-			marker: "local",
-		});
+		expect(lockRevision("troupe@file:../.troupe-dist/troupe")).toBe(
+			"file:../.troupe-dist/troupe",
+		);
+		expect(lockRevision(undefined)).toBe("unknown");
 	});
 
 	test("no lockfile entry and no Git give unknown+local", async () => {
@@ -482,5 +459,207 @@ describe("revision markers (C17)", () => {
 		expect((await line()).line).toBe(
 			"shepherd troupe-agent-source-v2 framework/troupe=unknown+local package/shepherd=unknown+local source=<source>",
 		);
+	});
+});
+
+// C24: the framework prints the pin's full commit unmarked only when the
+// request, the lockfile and the installed bytes all agree with the pin.
+describe("the pin record and the framework marker (C24)", () => {
+	const COMMIT = "3cce0f41106df60f81b97ae3552c6a2948825bc0";
+	const REQUEST = `git+https://github.com/ag0os/troupe.git#${COMMIT}`;
+	/** Verbatim from this package's regenerated bun.lock (Bun 1.2.22, GitHub tarball). */
+	const TARBALL_LOCK =
+		'"troupe": ["troupe@github:ag0os/troupe#3cce0f4", { "dependencies": { "typescript": "^5.6.2", "yaml": "^2", "zod": "^4" } }, "ag0os-troupe-3cce0f4"],';
+	/**
+	 * Derived, not captured: spike S-2's true Git tuple (row 7, taken at
+	 * 36bda79 through a Git shim) with both commits replaced by the tag
+	 * commit. Bun 1.2.22 cannot install this form with current Git.
+	 */
+	const GIT_LOCK = `"troupe": ["troupe@git+ssh://git@github.com/ag0os/troupe.git#${COMMIT}", { "dependencies": { "typescript": "^5.6.2", "yaml": "^2", "zod": "^4" } }, "${COMMIT}"],`;
+
+	const lockWith = (tuple: string) =>
+		`{\n  "lockfileVersion": 1,\n  "packages": {\n    ${tuple}\n  }\n}\n`;
+	const installedDigest = () =>
+		readSourceInputs(v2Inputs(layout)[0] as SourceInputDefinition).provenance
+			.digest;
+	const pin = (overrides: Record<string, unknown> = {}) => ({
+		tag: "v0.1",
+		commit: COMMIT,
+		owner: "ag0os",
+		repository: "troupe",
+		digest: installedDigest(),
+		proofs: [
+			{
+				date: "2026-11-10",
+				bun: "1.2.22",
+				checks: ["fixture"],
+				evidence: "none",
+			},
+		],
+		...overrides,
+	});
+	const writePin = (value: unknown) =>
+		put("package/troupe-pin.json", `${JSON.stringify(value, null, "\t")}\n`);
+	const framework = async () => {
+		const captured = await shepherdStampV2(layout).capture(context());
+		const line = shepherdStampV2(layout).versionLine("shepherd", captured);
+		return line.split(" ")[2];
+	};
+
+	beforeEach(() => {
+		put(
+			"package/package.json",
+			JSON.stringify({ dependencies: { troupe: REQUEST } }),
+		);
+		put("package/bun.lock", lockWith(TARBALL_LOCK));
+	});
+
+	test("the tarball fixture is this package's lock entry, byte for byte", () => {
+		const lock = readFileSync(join(PACKAGE_ROOT, "bun.lock"), "utf8");
+		expect(lock).toContain(`\n    ${TARBALL_LOCK}\n`);
+		const requested = JSON.parse(
+			readFileSync(join(PACKAGE_ROOT, "package.json"), "utf8"),
+		).dependencies.troupe;
+		expect(requested).toBe(REQUEST);
+	});
+
+	test("the tarball lock with an agreeing pin prints the full commit unmarked", async () => {
+		writePin(pin());
+		expect(await framework()).toBe(`framework/troupe=${COMMIT}`);
+	});
+
+	test("the true Git lock with an agreeing pin prints the full commit unmarked", async () => {
+		put("package/bun.lock", lockWith(GIT_LOCK));
+		writePin(pin());
+		expect(await framework()).toBe(`framework/troupe=${COMMIT}`);
+	});
+
+	test("changed framework bytes mark the pinned commit dirty", async () => {
+		writePin(pin());
+		put("dist/troupe/lib/agent-format/compiler.ts", "changed\n");
+		expect(await framework()).toBe(`framework/troupe=${COMMIT}+dirty`);
+		put("package/bun.lock", lockWith(GIT_LOCK));
+		expect(await framework()).toBe(`framework/troupe=${COMMIT}+dirty`);
+	});
+
+	test("a framework test file is not a framework byte", async () => {
+		writePin(pin());
+		put("dist/troupe/lib/agent-format/compiler.test.ts", "a test\n");
+		expect(await framework()).toBe(`framework/troupe=${COMMIT}`);
+	});
+
+	test("a missing pin is local, with the lockfile's own revision text", async () => {
+		expect(await framework()).toBe("framework/troupe=unknown+local");
+		put("package/bun.lock", lockWith(GIT_LOCK));
+		expect(await framework()).toBe(`framework/troupe=${COMMIT}+local`);
+	});
+
+	test("a pin naming another commit, owner or repository is local", async () => {
+		const other = "0123456789abcdef0123456789abcdef01234567";
+		for (const overrides of [
+			{ commit: other },
+			{ owner: "someone" },
+			{ repository: "fork" },
+		]) {
+			writePin(pin(overrides));
+			expect([overrides, await framework()]).toEqual([
+				overrides,
+				"framework/troupe=unknown+local",
+			]);
+			put("package/bun.lock", lockWith(GIT_LOCK));
+			expect([overrides, await framework()]).toEqual([
+				overrides,
+				`framework/troupe=${COMMIT}+local`,
+			]);
+			put("package/bun.lock", lockWith(TARBALL_LOCK));
+		}
+	});
+
+	test("a pin whose digest differs from the installed bytes is dirty", async () => {
+		writePin(pin({ digest: `sha256:${"0".repeat(64)}` }));
+		expect(await framework()).toBe(`framework/troupe=${COMMIT}+dirty`);
+	});
+
+	test("a request or lock that does not name the pin is local", async () => {
+		writePin(pin());
+		const other = "0123456789abcdef0123456789abcdef01234567";
+		put(
+			"package/package.json",
+			JSON.stringify({
+				dependencies: { troupe: REQUEST.replace(COMMIT, other) },
+			}),
+		);
+		expect(await framework()).toBe("framework/troupe=unknown+local");
+		put(
+			"package/package.json",
+			JSON.stringify({ dependencies: { troupe: REQUEST } }),
+		);
+		for (const tuple of [
+			TARBALL_LOCK.replace("#3cce0f4", "#0123456"),
+			TARBALL_LOCK.replace("#3cce0f4", "#3cce0f"),
+			TARBALL_LOCK.replace("ag0os/troupe", "someone/troupe"),
+			GIT_LOCK.replace(`.git#${COMMIT}`, `.git#${other}`),
+			'"troupe": ["troupe@file:../dist/troupe", {}],',
+		]) {
+			put("package/bun.lock", lockWith(tuple));
+			expect([tuple, (await framework())?.endsWith("+local")]).toEqual([
+				tuple,
+				true,
+			]);
+		}
+	});
+
+	test("a malformed pin is refused, not read as absent", async () => {
+		const bad: [string, string][] = [
+			["not JSON", "{ tag: v0.1"],
+			["an array", "[]\n"],
+			["a short commit", JSON.stringify(pin({ commit: "3cce0f4" }))],
+			["no digest", JSON.stringify({ ...pin(), digest: undefined })],
+			["a bare digest", JSON.stringify(pin({ digest: "0".repeat(64) }))],
+			["an extra key", JSON.stringify(pin({ note: "x" }))],
+			["no proofs", JSON.stringify({ ...pin(), proofs: undefined })],
+			[
+				"a proof without checks",
+				JSON.stringify(
+					pin({
+						proofs: [
+							{ date: "2026-11-10", bun: "1.2.22", checks: [], evidence: "x" },
+						],
+					}),
+				),
+			],
+			["an owner path", JSON.stringify(pin({ owner: "ag0os/x" }))],
+		];
+		for (const [why, text] of bad) {
+			put("package/troupe-pin.json", text);
+			expect(() => parsePin(text)).toThrow(PinError);
+			let refused: unknown;
+			try {
+				await shepherdStampV2(layout).capture(context());
+			} catch (error) {
+				refused = error;
+			}
+			expect([why, refused instanceof PinError]).toEqual([why, true]);
+		}
+	});
+
+	test("the pin is a package source file when present", async () => {
+		const without = readV2Source(layout);
+		expect(isSourcePath("troupe-pin.json")).toBe(true);
+		writePin(pin());
+		const withPin = readV2Source(layout);
+		expect(withPin.entries.map((entry) => entry.path)).toContain(
+			"package/shepherd/troupe-pin.json",
+		);
+		expect(withPin.source).not.toBe(without.source);
+	});
+
+	test("this package's own pin agrees with its request, lock and install", () => {
+		expect(
+			frameworkFacts({
+				packageRoot: PACKAGE_ROOT,
+				troupeRoot: troupeRoot(PACKAGE_ROOT),
+			}),
+		).toEqual({ revision: readPin(PACKAGE_ROOT)?.commit ?? "", marker: null });
 	});
 });
