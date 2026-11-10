@@ -2,13 +2,13 @@
 
 Follow these steps on a fresh machine. Shepherd keeps workspace state on disk; machine settings and logins need their own setup.
 
-1. **Prerequisites.** Install git, `jq` and Bun. On macOS, Homebrew can supply git and `jq`. The status line below needs `jq`; Bun installs dependencies and builds Troupe's binaries.
+1. **Prerequisites.** Install git, `jq` and Bun. On macOS, Homebrew can supply git and `jq`. The status line below needs `jq`; Bun 1.2.22 installs dependencies and builds Shepherd.
 
 2. **Harnesses.** Install Claude Code, the required default backend, and optionally the Codex CLI. Sign in to each harness you intend to use. `codex login` runs per Codex home, so authenticate each home separately.
 
 3. **Herdr, optional.** Install the Herdr binary, then run `herdr integration install claude` and, if using Codex, `herdr integration install codex`. These hooks let panes report agent state. Shepherd also runs without Herdr.
 
-4. **Troupe.** Clone the Troupe repository, enter it, run `bun install`, then `bun run compile:all`. Put the repository's `bin/` directory on PATH in your shell configuration so `shepherd` resolves to the binary you built.
+4. **Shepherd.** Clone this repository, enter it, run `bun install --frozen-lockfile`, then `bun run compile shepherd`. The install fetches Troupe from GitHub at the commit `troupe-pin.json` names. Put the repository's `bin/` directory on PATH in your shell configuration so `shepherd` resolves to the binary you built, and keep `packages/` beside `bin/`: the binary reads its base packages from there. `shepherd --version` should print both origins without a marker ([STAMPS.md](STAMPS.md)).
 
 5. **Claude Code settings.** In `~/.claude/settings.json`, or the settings file under `CLAUDE_CONFIG_DIR`, add `"crossSessionInbound": "accept"` for peer messages and this status line for the model and context percentage:
 
@@ -31,16 +31,14 @@ Follow these steps on a fresh machine. Shepherd keeps workspace state on disk; m
 
 ## Independent installation proof
 
-Bun 1.2.22 is the reference version for setup and replay. During extraction, from the Troupe worktree run:
+Bun 1.2.22 is the reference version. `scripts/prove-installation.ts` proves that one commit installs and builds on its own:
 
 ```sh
-bun scripts/replay-extraction-outside.ts --evidence <evidence-directory>
+bun scripts/prove-installation.ts --commit <full commit> --parent <empty directory> --evidence <evidence directory> --avoid <root> [--avoid <root>]...
 ```
 
-The replay copies `extractions/shepherd/` and the identical staged artifact at `extractions/.troupe-dist/troupe/` into fresh sibling directories under the system temporary directory. Run `bun run setup:extractions` first to prepare that artifact. The replay checks copied bytes and modes, refuses Git, `.shepherd` and `node_modules` ancestors, and denies reads of the original checkout with macOS `sandbox-exec`. It installs frozen, runs typecheck, Biome and the complete package suite, then builds exactly one `bin/shepherd` beside the copied `packages/`. Doctor checks both the complete installation and a binary-only copy; the latter must report the missing base packages.
+Before cloning it refuses a parent that is not an empty directory, is inside Git, sits below a Git, `.shepherd` or `node_modules` ancestor, or lies within an avoided root; every avoided root must exist. It clones the commit from this repository (or `--source`) into `<parent>/shepherd`, then, with a scratch HOME, configuration and Bun cache, runs a frozen install, the resolution guard, typecheck, Biome, the full suite (one rerun on the same head if it fails, both logs kept) and `bun run compile shepherd`. It checks that `bin/` holds exactly `shepherd`, that `--version` prints both origins unmarked, that the installed framework matches the pin, that doctor finds the binary on PATH with `packages/` beside it, and that the clone's tracked files still equal the commit. It scans the generated entry and the binary for each avoided root's path. On macOS every process after the clone runs under a one line `sandbox-exec` profile denying reads of the avoided roots, shown to bite before anything else runs; elsewhere the report records that no denial ran. `--drop-avoided-path` takes PATH entries inside an avoided root out of the consumer environment. The report is `installation.json` in the evidence directory, beside each step's streams.
 
-Consumer commands use `--no-install` and `NODE_PATH=<package>/node_modules`. The stage-parent `node_modules` link points to that one consumer. Its four assumptions are one consumer, no `node_modules` inside the stage, Bun 1.2.22 per-file links (the proof can also rehearse 1.4.4 hardlinks), and exactly `typescript`, `yaml` and `zod` as the staged runtime dependencies. Resolution is checked against the consumer lockfile by runtime probes and the stage-resolution test. The link exposes development dependencies too; it is a transitional extraction mechanism.
+The resolution guard can also run on its own: `bun --no-install scripts/resolution.ts` checks that Troupe's runtime imports (`typescript`, `yaml`, `zod`) resolve to this package's own `node_modules` at the locked versions under the runtime, `bun test`, `bun build` and `tsc`, with no `NODE_PATH`.
 
-Use `--bun <absolute-bun-path>` to repeat with another already available Bun release. The replay does not call setup in the outside copy, so it avoids setup's Bun 1.4.4 `Loader.registry` probe. Every output records its Bun version, scratch parent, artifact manifest, resolved dependency versions and generated-entry/binary checkout-path checks. Preserve `packages/` beside `bin/` when moving the complete installation.
-
-Nested Bun processes, including the compile script and eval harness children, carry no explicit `--no-install` flag. An offline nested-process probe returned the same not-found error with and without `BUN_OPTIONS`, so the replay does not claim that variable enforces the control. Bun 1.2.22 auto-installs by default only when it finds no `node_modules`; the copied consumer has one and the stage-parent link supplies one. Runtime resolution against the lockfile and the bundled Zod version provide the locked-resolution evidence.
+Nested Bun processes, such as the compile script and eval harness children, carry no explicit `--no-install` flag. Bun 1.2.22 auto-installs by default only when it finds no `node_modules` above the importing file, and Troupe is installed inside this package's `node_modules`, so every lookup from it has one. That is a reading of the layout, not a measurement: offline, an undeclared import fails with the same not-found error from inside the installed Troupe and from a directory with no `node_modules` at all, so the probe does not tell the two apart. The resolution guard and the bundled versions are the locked-resolution evidence.
