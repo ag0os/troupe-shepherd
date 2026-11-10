@@ -16,7 +16,7 @@
 				"bun run compile shepherd; shepherd --version prints both origins unmarked",
 				"doctor under a scratch HOME and XDG_CONFIG_HOME"
 			],
-			"evidence": "phase 3 step 2 build report and its evidence, kept outside this repository"
+			"evidence": "reproducible with scripts/pin-digest.ts on the v0.1 tree and scripts/prove-installation.ts; the maintainer's run records are not published"
 		}
 	]
 }
