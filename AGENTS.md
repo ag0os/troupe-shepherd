@@ -10,7 +10,7 @@ One command, the same for you and for CI:
 bun run checks
 ```
 
-It runs typecheck, Biome and the full suite. A change is done when it passes on the exact head. The suite takes several minutes; `bun test ./path` runs one file (`bun test` takes a substring filter, so give root paths a leading `./`). CI also runs `bun install --frozen-lockfile`, `bun run compile shepherd` and `bin/shepherd --version`, and fails unless both origins print unmarked. The Husky pre-commit hook runs `bun run check:all`.
+It runs typecheck, Biome and the full suite. It needs Bun 1.2.22, Git and Python 3.10 or later on PATH (several eval tests run `python3`); zsh is optional, and without it the Python harness check expects one more skipped case (`evals/shepherd/harness.test.ts`). A change is done when it passes on the exact head. The suite takes several minutes; `bun test ./path` runs one file (`bun test` takes a substring filter, so give root paths a leading `./`). CI also runs `bun install --frozen-lockfile`, the resolution guard (`bun --no-install scripts/resolution.ts`), `bun run compile shepherd` and `bin/shepherd --version`, and fails unless both origins print unmarked. The Husky pre-commit hook runs `bun run check:all`.
 
 ## The contract
 

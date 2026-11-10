@@ -5,11 +5,14 @@ import { PACKAGE_ROOT } from "./shepherd-definition";
 
 // The documents AGENTS.md names as part of the contract say what the code
 // does: STAMPS.md's marker rule, pin keys, digest framing and derivation
-// command, and SETUP.md's install commands and the proof's usage. Editing
-// one of these sentences alone fails here; change it with its test.
+// command, SETUP.md's install commands and the proof's usage, and
+// AGENTS.md's prerequisites for the checks and what CI runs. Editing one of
+// these sentences alone fails here; change it with its test.
 
 const doc = (name: string) =>
 	readFileSync(join(PACKAGE_ROOT, "docs", name), "utf8").replace(/\s+/g, " ");
+const agents = () =>
+	readFileSync(join(PACKAGE_ROOT, "AGENTS.md"), "utf8").replace(/\s+/g, " ");
 const normal = (text: string) => text.replace(/\s+/g, " ");
 
 test("STAMPS.md states the marker rule, the pin's keys and the digest", () => {
@@ -30,4 +33,28 @@ test("SETUP.md states the install commands and the proof's usage", () => {
 		"bun scripts/prove-installation.ts --commit <full commit> --parent <empty directory> --evidence <evidence directory> --avoid <root> [--avoid <root>]...",
 	])
 		expect(setup).toContain(normal(sentence));
+});
+
+test("AGENTS.md states what the checks need and what CI runs", () => {
+	const text = agents();
+	expect(text).toContain(
+		normal(
+			"It needs Bun 1.2.22, Git and Python 3.10 or later on PATH (several eval tests run `python3`); zsh is optional, and without it the Python harness check expects one more skipped case (`evals/shepherd/harness.test.ts`).",
+		),
+	);
+	expect(text).toContain(
+		"the resolution guard (`bun --no-install scripts/resolution.ts`)",
+	);
+	const ci = readFileSync(
+		join(PACKAGE_ROOT, ".github/workflows/ci.yml"),
+		"utf8",
+	);
+	for (const command of [
+		"bun install --frozen-lockfile",
+		"bun --no-install scripts/resolution.ts",
+		"bun run checks",
+		"bun run compile shepherd",
+		"bin/shepherd --version",
+	])
+		expect(ci).toContain(command);
 });
