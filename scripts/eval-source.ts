@@ -9,12 +9,13 @@
  * `HEAD`; `sourceDirty` is the package origin's `dirty` marker (its selected
  * bytes differ from that commit under the prefix); `dirty` stays repository
  * wide, as in v1, so any uncommitted change in the repository marks the
- * build dirty (C22). The version line is the v2 line: its framework part is
- * the lockfile resolution of `troupe` for the package the build was
- * captured from (`packageRoot`), and its package part follows from
- * `revision` and `sourceDirty`, so a verifier can rebuild it from a
- * recorded build and the package whose source hash it records. It never
- * prints `dirty`.
+ * build dirty (C22). The version line is the v2 line. Its framework part
+ * is the verified framework facts (`frameworkFacts`: the pin, the request,
+ * the lockfile and the installed bytes), carried from the build's capture
+ * when there is one and computed again for the package at `packageRoot`
+ * when a verifier rebuilds the line from a recorded build, whose equal
+ * source hash binds the same install. Its package part follows from
+ * `revision` and `sourceDirty`. It never prints `dirty`.
  */
 
 import { realpathSync } from "node:fs";
@@ -38,10 +39,9 @@ import {
 	troupeRoot,
 } from "./shepherd-definition";
 import {
-	dependencyIdentity,
 	FRAMEWORK_ORIGIN,
+	frameworkFacts,
 	isSourcePath,
-	lockRevision,
 	type OriginMarker,
 	PACKAGE_ORIGIN,
 	readV2Source,
@@ -74,6 +74,21 @@ export const GATED_MODULES: readonly string[] = [
 	"scripts/eval-source.ts",
 ];
 
+export type FrameworkFacts = {
+	revision: string;
+	marker: OriginMarker;
+};
+
+/** Framework facts read back from stamp JSON, or undefined when absent or not that shape. */
+function asFrameworkFacts(value: unknown): FrameworkFacts | undefined {
+	if (typeof value !== "object" || value === null) return undefined;
+	const { revision, marker } = value as Record<string, unknown>;
+	if (typeof revision !== "string") return undefined;
+	if (marker !== null && marker !== "local" && marker !== "dirty")
+		return undefined;
+	return { revision, marker };
+}
+
 export interface BuildProvenance {
 	/** The package's full build-time `HEAD`. */
 	revision: string;
@@ -82,6 +97,8 @@ export interface BuildProvenance {
 	/** The package's selected paths or bytes differ from `HEAD`. */
 	sourceDirty: boolean;
 	manifest: SourceManifest;
+	/** The framework's verified revision and marker, as the build captured them. */
+	framework?: FrameworkFacts;
 	/**
 	 * The package directory the build was captured from, whose lockfile
 	 * gives the version line's framework part. Never recorded in a stamp.
@@ -245,14 +262,21 @@ async function captureProvenance(
 	const origins = Array.isArray(captured.provenance.origins)
 		? captured.provenance.origins
 		: [];
-	const own = origins.find(
-		(origin) => (origin as { origin?: string }).origin === PACKAGE_ORIGIN,
-	) as { revision?: string; marker?: OriginMarker } | undefined;
+	const named = (name: string) =>
+		origins.find((origin) => (origin as { origin?: string }).origin === name);
+	const own = named(PACKAGE_ORIGIN) as
+		| { revision?: string; marker?: OriginMarker }
+		| undefined;
+	const framework = asFrameworkFacts(named(FRAMEWORK_ORIGIN));
+	if (!framework) {
+		throw new ShepherdSourceError(["the stamp captured no framework origin"]);
+	}
 	return {
 		revision: own?.revision ?? head.text.trim(),
 		dirty: status.text.length > 0,
 		sourceDirty: own?.marker === "dirty",
 		manifest: captured.manifest,
+		framework,
 		packageRoot: resolve(root),
 	};
 }
@@ -292,10 +316,12 @@ export function versionLine(provenance: BuildProvenance): string {
 			"a version line needs the package root its build was captured from",
 		]);
 	}
-	const framework = {
-		revision: lockRevision(dependencyIdentity(provenance.packageRoot).resolved),
-		marker: "local" as const,
-	};
+	const framework =
+		provenance.framework ??
+		frameworkFacts({
+			packageRoot: provenance.packageRoot,
+			troupeRoot: troupeRoot(provenance.packageRoot),
+		});
 	const marker: OriginMarker = !FULL_COMMIT.test(provenance.revision)
 		? "local"
 		: provenance.sourceDirty
@@ -313,12 +339,14 @@ export function versionLine(provenance: BuildProvenance): string {
 }
 
 function provenanceOf(stamp: CapturedBuildStamp): BuildProvenance {
-	const { revision, dirty, sourceDirty } = stamp.provenance;
+	const { revision, dirty, sourceDirty, framework } = stamp.provenance;
+	const facts = asFrameworkFacts(framework);
 	return {
 		revision: String(revision),
 		dirty: dirty === true,
 		sourceDirty: sourceDirty === true,
 		manifest: stamp.manifest,
+		...(facts ? { framework: facts } : {}),
 	};
 }
 
