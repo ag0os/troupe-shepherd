@@ -11,8 +11,11 @@ import { join } from "node:path";
 import {
 	avoidedPathEntries,
 	checkParent,
+	denialProbeArgv,
 	denialProfile,
+	judgeProbe,
 	parseArgs,
+	run,
 } from "./prove-installation";
 
 // The installation proof refuses a parent it cannot trust before cloning.
@@ -123,5 +126,66 @@ describe("the proof's denial and inputs", () => {
 		]);
 		expect(args.avoid).toEqual(["x", "y"]);
 		expect(args.dropAvoidedPath).toBe(true);
+	});
+});
+
+// A1: the proof's denial self check counts only an exact witness. The
+// probe reads the root itself, so a root whose `.git` is a file (a Git
+// worktree) cannot pass on an unrelated error, and an unsandboxed control
+// must read it first.
+describe("the denial self check needs a positive witness", () => {
+	const roots = () => {
+		const plain = dir("witness-plain");
+		writeFileSync(join(plain, "file"), "x\n");
+		const worktree = dir("witness-worktree");
+		writeFileSync(
+			join(worktree, ".git"),
+			"gitdir: /nowhere/.git/worktrees/x\n",
+		);
+		return { plain, worktree };
+	};
+	const env = { PATH: process.env.PATH ?? "", HOME: scratch };
+	const probe = (root: string, profile?: string) =>
+		run(
+			[
+				...(profile ? ["/usr/bin/sandbox-exec", "-p", profile] : []),
+				...denialProbeArgv(process.execPath, root),
+			],
+			scratch,
+			env,
+		);
+
+	test("the unsandboxed control reads each root", () => {
+		for (const root of Object.values(roots())) {
+			const result = probe(root);
+			expect([root, result.code, result.stdout]).toEqual([
+				root,
+				2,
+				"READABLE\n",
+			]);
+			expect(judgeProbe(result)).toBe("readable");
+		}
+	});
+
+	test.skipIf(process.platform !== "darwin")(
+		"only the denial profile passes the judge",
+		() => {
+			for (const root of Object.values(roots())) {
+				expect([root, judgeProbe(probe(root, denialProfile([root])))]).toEqual([
+					root,
+					"denied",
+				]);
+				expect([
+					root,
+					judgeProbe(probe(root, "(version 1)(allow default)")),
+				]).toEqual([root, "readable"]);
+			}
+		},
+	);
+
+	test("a silent exit or an unrelated error is unproven", () => {
+		expect(judgeProbe({ code: 0, stdout: "" })).toBe("unproven");
+		expect(judgeProbe({ code: 3, stdout: "ENOTDIR\n" })).toBe("unproven");
+		expect(judgeProbe({ code: 0, stdout: "EPERM extra\n" })).toBe("unproven");
 	});
 });

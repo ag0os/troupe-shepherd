@@ -7,10 +7,13 @@
  *
  * Before cloning it refuses a parent that is not an empty directory, sits
  * below a Git, `.shepherd` or `node_modules` ancestor, is inside a Git work
- * tree, or lies within an avoided root. The clone itself runs unsandboxed;
- * on macOS every later process runs under a `sandbox-exec` profile that
- * denies reads of the avoided roots, and the denial is shown to bite before
- * anything else runs. Elsewhere the report records that no denial ran.
+ * tree, or lies within an avoided root. Each avoided root is first shown
+ * readable without the denial (a control that must print `READABLE`). Only
+ * the clone runs unsandboxed; on macOS every other process, the checkout
+ * included, runs under a `sandbox-exec` profile that denies reads of the
+ * avoided roots, and the denial is shown to bite (`EPERM` or `EACCES`)
+ * before anything else runs. Elsewhere only the control runs and the report
+ * records that no denial ran.
  *
  * Afterwards it scans the generated entry and the binary for each avoided
  * root's path, checks that the clone's tracked files still equal the
@@ -98,6 +101,33 @@ export function denialProfile(roots: readonly string[]): string {
 	return `(version 1)(allow default)(deny file-read* ${paths})`;
 }
 
+/**
+ * The denial probe for one root: reads the root itself, prints what
+ * happened and exits explicitly, so no uncaught error decides its status
+ * (Bun 1.2.22 exits 0 silently for an uncaught fs error under `-e`).
+ * Readable: `READABLE`, exit 2. Denied: the code, exit 0. Otherwise: the
+ * code, exit 3.
+ */
+export function denialProbeArgv(bun: string, root: string): string[] {
+	return [
+		bun,
+		"--no-install",
+		"-e",
+		`let out = "READABLE"; let status = 2; try { require("node:fs").readdirSync(${JSON.stringify(root)}); } catch (e) { out = String(e?.code ?? e); status = out === "EPERM" || out === "EACCES" ? 0 : 3; } console.log(out); process.exit(status);`,
+	];
+}
+
+/** What a probe run showed: only an exact witness counts. */
+export function judgeProbe(result: {
+	code: number | null;
+	stdout: string;
+}): "denied" | "readable" | "unproven" {
+	if (result.code === 0 && /^(EPERM|EACCES)\n$/.test(result.stdout))
+		return "denied";
+	if (result.code === 2 && result.stdout === "READABLE\n") return "readable";
+	return "unproven";
+}
+
 /** Absolute PATH entries inside an avoided root; relative ones name no fixed place. */
 export function avoidedPathEntries(
 	path: string,
@@ -156,7 +186,11 @@ export function parseArgs(argv: readonly string[]): Args {
 	};
 }
 
-function run(argv: string[], cwd: string, env: Record<string, string>): Ran {
+export function run(
+	argv: string[],
+	cwd: string,
+	env: Record<string, string>,
+): Ran {
 	const [command, ...rest] = argv;
 	const child = spawnSync(command ?? "", rest, {
 		cwd,
@@ -219,9 +253,9 @@ console.log(JSON.stringify({
 async function prove(args: Args): Promise<boolean> {
 	const ancestors = checkParent(args.parent, args.avoid);
 	const parent = realpathSync(args.parent);
-	mkdirSync(args.evidence, { recursive: true });
-	if (isWithin(parent, args.evidence))
+	if (isWithin(parent, resolve(args.evidence)))
 		throw new Error("keep the evidence directory outside the parent");
+	mkdirSync(args.evidence, { recursive: true });
 	const roots = args.avoid.map((root) => realpathSync(root));
 	const denial =
 		process.platform === "darwin" && roots.length > 0
@@ -236,7 +270,7 @@ async function prove(args: Args): Promise<boolean> {
 				.join(":")
 		: inherited;
 	const env = consumerEnv(parent, path);
-	const steps: { name: string; code: number | null; expected: number }[] = [];
+	const steps: { name: string; code: number | null; expected?: number }[] = [];
 	const save = (name: string, result: Ran) => {
 		writeFileSync(join(args.evidence, `${name}.stdout`), result.stdout);
 		writeFileSync(join(args.evidence, `${name}.stderr`), result.stderr);
@@ -292,19 +326,24 @@ async function prove(args: Args): Promise<boolean> {
 		return ok;
 	};
 	try {
-		for (const [i, root] of roots.entries()) {
-			const probe = existsSync(join(root, ".git")) ? join(root, ".git") : root;
-			step(
-				`denied-${i}`,
-				[
-					bun,
-					"--no-install",
-					"-e",
-					`try { require("node:fs").readdirSync(${JSON.stringify(probe)}); process.exit(2); } catch (e) { if (e.code !== "EPERM" && e.code !== "EACCES") throw e; console.log(e.code); }`,
-				],
+		const probe = (name: string, root: string, sandboxed: boolean) => {
+			const want = sandboxed ? "denied" : "readable";
+			console.log(`running ${name}`);
+			const result = run(
+				[...(sandboxed ? denial : []), ...denialProbeArgv(bun, root)],
 				parent,
-				{ expected: denial.length > 0 ? 0 : 2 },
+				env,
 			);
+			save(name, result);
+			steps.push({ name, code: result.code, expected: sandboxed ? 0 : 2 });
+			if (judgeProbe(result) !== want)
+				throw new Error(
+					`${name}: ${root} is not shown ${want}: exit ${result.code}, stdout ${JSON.stringify(result.stdout)}`,
+				);
+		};
+		for (const [i, root] of roots.entries()) probe(`control-${i}`, root, false);
+		if (denial.length > 0) {
+			for (const [i, root] of roots.entries()) probe(`denied-${i}`, root, true);
 		}
 		step(
 			"clone",
@@ -334,7 +373,6 @@ async function prove(args: Args): Promise<boolean> {
 				args.commit,
 			],
 			clone,
-			{ sandboxed: false },
 		);
 		const head = step(
 			"head",
@@ -421,11 +459,7 @@ async function prove(args: Args): Promise<boolean> {
 			{ ...env, PATH: `${join(clone, "bin")}:${env.PATH}` },
 		);
 		save("doctor", doctor);
-		steps.push({
-			name: "doctor",
-			code: doctor.code,
-			expected: doctor.code ?? 0,
-		});
+		steps.push({ name: "doctor", code: doctor.code });
 		const checks = (
 			JSON.parse(doctor.stdout) as {
 				checks: { id: string; status: string; subject?: string }[];
