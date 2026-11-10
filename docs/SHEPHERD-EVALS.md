@@ -242,7 +242,7 @@ The spec's initial budget for baseline subjects, scoring and the targeted regres
 
 ## The CI check
 
-The `shepherd-evals (informational)` job in `.github/workflows/ci.yml` runs on every pull request to `main` or `master`. It checks out the PR head commit (not GitHub's synthetic merge) with full history, installs Bun (`bun-version: latest`, as the existing build job does) and Python 3, installs dependencies with `--ignore-scripts` so no PR script runs before the tree is hashed, holds only read permission, runs no model and needs no credentials. The `build` job runs typecheck, Biome and `bun test`. A malformed `troupe-pin.json` makes the verifier refuse, as the build does: the version line's framework part cannot be computed without it.
+The `shepherd-evals (informational)` job in `.github/workflows/ci.yml` runs on every pull request to `main`. It checks out the PR head commit (not GitHub's synthetic merge) with full history, installs Bun (`bun-version: 1.2.22`, pinned as in the build job) and Python 3, installs dependencies with `--ignore-scripts` so no PR script runs before the tree is hashed, holds only read permission, runs no model and needs no credentials. The `build` job runs typecheck, Biome and `bun test`. A malformed `troupe-pin.json` makes the verifier refuse, as the build does: the version line's framework part cannot be computed without it.
 
 The check is informational: it never fails a pull request for a missing result or for a result's outcome. It fails only on a committed result that does not verify, or when it cannot decide. Its outcomes:
 
