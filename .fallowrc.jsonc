@@ -3,6 +3,6 @@
 	// The package tools' bun sources: shell wrappers in packages/*/tools/ exec
 	// bun on these, which fallow cannot follow.
 	"entry": ["packages/*/tools/*.d/main.ts"],
-	// Run by the Troupe checkout's scripts/setup-extractions.ts.
+	// Run on its own as the resolution guard (docs/SETUP.md).
 	"supportEntry": ["scripts/resolution.ts"]
 }

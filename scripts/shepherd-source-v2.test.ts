@@ -70,7 +70,11 @@ const ROWS: [string, boolean, string][] = [
 	["lib/shepherd/__fixtures__/a.md", false, "library fixture"],
 	["lib/shepherd/__snapshots__/a.snap", false, "library snapshot"],
 	["bin/shepherd", false, "output"],
-	["extractions/.troupe-dist/troupe/package.json", false, "staging"],
+	[
+		"extractions/.troupe-dist/troupe/package.json",
+		false,
+		"outside every selection",
+	],
 	["evals/shepherd/results/x.json", false, "eval evidence"],
 	["evals/shepherd/rubric.yaml", false, "evaluation input (own selector)"],
 	["scripts/eval-source.ts", false, "eval build seam (evaluation input)"],

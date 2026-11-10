@@ -2,23 +2,19 @@
  * Shepherd source identity, v2: package-relative, table-driven membership
  * over two origins, `framework/troupe` (the installed Troupe bytes the build
  * selects) and `package/shepherd` (the Shepherd package). It is Shepherd
- * policy, built on Troupe's generic `troupe/provenance` helpers. The
- * extracted package holds a checked copy at `scripts/shepherd-source-v2.ts`
- * (ADAPTATIONS.json); phase 3 deletes this one. The live binary is still
- * stamped by v1 (`scripts/shepherd-source.ts`), whose identities are never
- * relabeled.
+ * policy, built on Troupe's generic `troupe/provenance` helpers. Builds
+ * from Troupe's own tree before `v0.1` carry the v1 stamp, whose identities
+ * are never relabeled.
  *
  * Membership is explicit. Git ignore rules play no part: the package's own
  * `.gitignore` is an input, and a host's global excludes cannot change what
- * is hashed. Outputs, the staged distribution and generated eval evidence
- * are never selected; evaluation inputs have their own selector.
+ * is hashed. Outputs and generated eval evidence are never selected;
+ * evaluation inputs have their own selector.
  *
- * The table is the extracted package's (design.md section 4): its build
- * definition, build and watch scripts and this policy, not the repository's
- * legacy wrappers or the v1 adapter. `biome.json` and `ADAPTATIONS.json`
- * are not build inputs and are left out. One implementation selects:
- * `isSourcePath` decides, and the reader walks the trees and keeps exactly
- * the paths it accepts.
+ * The table is the package's: its build definition, build and watch scripts
+ * and this policy. `biome.json` is not a build input and is left out. One
+ * implementation selects: `isSourcePath` decides, and the reader walks the
+ * trees and keeps exactly the paths it accepts.
  *
  * Each origin's revision carries a marker (C17): the framework's is the
  * lockfile's resolution of `troupe`, a commit for a Git dependency and the
@@ -76,10 +72,9 @@ const PACKAGE_TREES = [
 	{ dir: "system-prompts/shepherd", tests: true },
 ] as const;
 
-/** Never selected: outputs, the staged distribution and eval evidence. */
+/** Never selected: outputs and eval evidence. */
 const EXCLUDED_DIRS = [
 	"bin",
-	"extractions/.troupe-dist",
 	"evals/shepherd/artifacts",
 	"evals/shepherd/results",
 	"evals/shepherd/validation",
