@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.2.22
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      # Fetches Troupe from GitHub at the commit troupe-pin.json names.
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Resolution guard
+        run: bun --no-install scripts/resolution.ts
+
+      # Typecheck, Biome and the full suite (AGENTS.md).
+      - name: Checks
+        run: bun run checks
+
+      - name: Build
+        run: bun run compile shepherd
+
+      # Both origins must print unmarked: the pin agrees with the request,
+      # the lock and the installed bytes, and the package is this commit.
+      - name: Version line
+        run: |
+          line="$(bin/shepherd --version)"
+          echo "$line"
+          case "$line" in
+            *+local*|*+dirty*) echo "a marked origin"; exit 1 ;;
+          esac
+          echo "$line" | grep -Eq "^shepherd troupe-agent-source-v2 framework/troupe=[0-9a-f]{40} package/shepherd=$(git rev-parse HEAD) source=sha256:[0-9a-f]{64}$"
+
+  # The informational Shepherd evals check (docs/SHEPHERD-EVALS.md). Evals
+  # run on demand, so a missing or blocked result never fails a PR; only a
+  # committed result for the head's source hash that does not verify does.
+  # It runs no model and needs no credentials.
+  shepherd-evals:
+    name: shepherd-evals (informational)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep line endings as committed
+        run: git config --global core.autocrlf false
+
+      - name: Check out the PR head with full history
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.2.22
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      # No PR script runs before the verifier hashes the tree.
+      - name: Install deps
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Check the Shepherd evals result
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bun evals/shepherd/verify.ts --base "$BASE_SHA" --head "$HEAD_SHA"
