@@ -894,12 +894,17 @@ describe("bounds and cleanup (review finding 9)", () => {
 			signal: controller.signal,
 		});
 		await waitForOrphan();
+		const orphan = orphanPid();
+		expect(orphan).toBeGreaterThan(0);
 		controller.abort();
 		const scored = await running;
 		expect(Date.now() - started).toBeLessThan(4_000);
 		expect(scored.invocations).toHaveLength(1);
 		expect(scored.invocations[0]?.failure).toBe("cancelled");
-		expect(orphanAlive()).toBe(false);
+		// The group kill is sent before scoreAttempt resolves, but the killed
+		// orphan can still answer signal 0 for a moment until it is reaped.
+		for (let i = 0; i < 100 && orphanAlive(orphan); i++) await Bun.sleep(20);
+		expect(orphanAlive(orphan)).toBe(false);
 		expect(liveScorerGroups.size).toBe(0);
 	}, 20_000);
 
