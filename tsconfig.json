@@ -15,7 +15,6 @@
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
 		"noPropertyAccessFromIndexSignature": false,
-		"preserveSymlinks": true,
 		"types": ["bun", "troupe/text-imports"]
 	},
 	"exclude": ["node_modules", "bin"]

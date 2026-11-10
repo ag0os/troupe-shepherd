@@ -1,0 +1,2 @@
+# Typecheck and Biome together, as CI runs them
+bun run check:all
