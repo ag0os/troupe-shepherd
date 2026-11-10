@@ -168,21 +168,34 @@ describe("the denial self check needs a positive witness", () => {
 		}
 	});
 
-	test.skipIf(process.platform !== "darwin")(
-		"only the denial profile passes the judge",
-		() => {
-			for (const root of Object.values(roots())) {
-				expect([root, judgeProbe(probe(root, denialProfile([root])))]).toEqual([
-					root,
-					"denied",
-				]);
-				expect([
-					root,
-					judgeProbe(probe(root, "(version 1)(allow default)")),
-				]).toEqual([root, "readable"]);
-			}
-		},
-	);
+	// macOS refuses a nested sandbox_apply under any profile with a deny
+	// rule, so inside the installation proof (which runs this suite under
+	// its denial) this case cannot run; the proof's own denied steps hold it.
+	const canSandbox =
+		process.platform === "darwin" &&
+		run(
+			[
+				"/usr/bin/sandbox-exec",
+				"-p",
+				"(version 1)(allow default)",
+				"/usr/bin/true",
+			],
+			scratch,
+			env,
+		).code === 0;
+
+	test.skipIf(!canSandbox)("only the denial profile passes the judge", () => {
+		for (const root of Object.values(roots())) {
+			expect([root, judgeProbe(probe(root, denialProfile([root])))]).toEqual([
+				root,
+				"denied",
+			]);
+			expect([
+				root,
+				judgeProbe(probe(root, "(version 1)(allow default)")),
+			]).toEqual([root, "readable"]);
+		}
+	});
 
 	test("a silent exit or an unrelated error is unproven", () => {
 		expect(judgeProbe({ code: 0, stdout: "" })).toBe("unproven");
