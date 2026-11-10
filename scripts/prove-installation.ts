@@ -366,6 +366,8 @@ async function prove(args: Args): Promise<boolean> {
 		for (const [i, root] of roots.entries()) probe(`control-${i}`, root, false);
 		if (denial.length > 0) {
 			for (const [i, root] of roots.entries()) probe(`denied-${i}`, root, true);
+			env[PROOF_DENIAL_VARIABLE] = "witnessed";
+			report.proofVariable = PROOF_DENIAL_VARIABLE;
 		}
 		step(
 			"clone",
