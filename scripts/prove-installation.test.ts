@@ -204,53 +204,68 @@ describe("the denial self check needs a positive witness", () => {
 	});
 });
 
-// M1: the consumer environment inherits no credentials or install
-// configuration, so the proof's cold install is token free by construction.
+// M1, R1: the consumer environment is built from an allowlist, so no
+// inherited credential, proxy, runtime or unknown setting reaches the
+// consumer, and the proof's cold install is token free by construction.
 describe("the proof's consumer environment", () => {
-	test("drops credentials, install configuration and routing, by name only", () => {
+	const DROPPED: Record<string, string> = {
+		// The keys the old blocklist named.
+		GITHUB_TOKEN: "secret-1",
+		GH_TOKEN: "secret-2",
+		NPM_CONFIG_REGISTRY: "secret-3",
+		npm_config_userconfig: "secret-4",
+		BUN_CONFIG_REGISTRY: "secret-5",
+		GIT_DIR: "secret-6",
+		CLAUDE_CONFIG_DIR: "secret-7",
+		SHEPHERD_WORKSPACE: "secret-8",
+		XDG_CONFIG_HOME: "secret-9",
+		NODE_PATH: "secret-10",
+		BUN_OPTIONS: "secret-11",
+		CODEX_HOME: "secret-12",
+		// Credentials, proxies and runtime configuration it missed.
+		NPM_TOKEN: "secret-13",
+		NODE_AUTH_TOKEN: "secret-14",
+		BUN_AUTH_TOKEN: "secret-15",
+		SSH_AUTH_SOCK: "secret-16",
+		HTTP_PROXY: "secret-17",
+		HTTPS_PROXY: "secret-18",
+		NODE_OPTIONS: "secret-19",
+		SSL_CERT_FILE: "secret-20",
+		AWS_ACCESS_KEY_ID: "secret-21",
+		// Anything else.
+		SOME_UNKNOWN_SETTING: "secret-22",
+		HOME: "secret-23",
+		PATH: "secret-24",
+		PROVE_INSTALLATION_DENIAL: "secret-25",
+	};
+
+	test("keeps only locale, terminal and temporary directory, then adds its own", () => {
 		const { env, dropped } = consumerEnv(
 			{
-				PATH: "/usr/bin",
-				HOME: "/real/home",
+				...DROPPED,
 				LANG: "C",
-				GITHUB_TOKEN: "secret-1",
-				GH_TOKEN: "secret-2",
-				NPM_CONFIG_REGISTRY: "https://example.invalid",
-				npm_config_userconfig: "/real/home/.npmrc",
-				BUN_CONFIG_REGISTRY: "https://example.invalid",
-				GIT_DIR: "/elsewhere",
-				CLAUDE_CONFIG_DIR: "/real/home/.claude",
-				SHEPHERD_WORKSPACE: "/w",
-				XDG_CONFIG_HOME: "/real/config",
-				NODE_PATH: "/n",
-				BUN_OPTIONS: "--x",
-				CODEX_HOME: "/c",
+				LC_ALL: "C",
+				LC_CTYPE: "UTF-8",
+				TERM: "dumb",
+				TMPDIR: "/scratch/tmp",
 			},
 			"/scratch/parent",
 			"/proof/bin:/usr/bin",
 		);
-		expect(dropped).toEqual([
-			"BUN_CONFIG_REGISTRY",
-			"BUN_OPTIONS",
-			"CLAUDE_CONFIG_DIR",
-			"CODEX_HOME",
-			"GH_TOKEN",
-			"GITHUB_TOKEN",
-			"GIT_DIR",
-			"NODE_PATH",
-			"NPM_CONFIG_REGISTRY",
-			"SHEPHERD_WORKSPACE",
-			"XDG_CONFIG_HOME",
-			"npm_config_userconfig",
-		]);
+		expect(dropped).toEqual(Object.keys(DROPPED).sort());
 		expect(JSON.stringify(dropped)).not.toContain("secret");
 		expect(env).toEqual({
-			PATH: "/proof/bin:/usr/bin",
-			HOME: "/scratch/parent/home",
 			LANG: "C",
+			LC_ALL: "C",
+			LC_CTYPE: "UTF-8",
+			TERM: "dumb",
+			TMPDIR: "/scratch/tmp",
+			HOME: "/scratch/parent/home",
 			XDG_CONFIG_HOME: "/scratch/parent/config",
 			BUN_INSTALL_CACHE_DIR: "/scratch/parent/bun-cache",
+			PATH: "/proof/bin:/usr/bin",
 			NO_COLOR: "1",
 		});
+		expect(JSON.stringify(env)).not.toContain("secret");
 	});
 });

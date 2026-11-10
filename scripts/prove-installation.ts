@@ -25,8 +25,9 @@
  *     --evidence <dir> [--source <repository>] [--avoid <root>]...
  *     [--drop-avoided-path]
  *
- * The consumer environment carries no inherited credentials or install
- * configuration (`consumerEnv`); the report names the dropped keys.
+ * The consumer environment is built from an allowlist (`consumerEnv`), so
+ * it inherits no credentials, proxies or runtime configuration; the report
+ * names the dropped keys.
  * `--source` defaults to this repository. `--drop-avoided-path` removes PATH
  * entries inside an avoided root from the consumer environment.
  */
@@ -209,27 +210,23 @@ export function run(
 	};
 }
 
-const DROPPED_PREFIXES = [
-	"SHEPHERD_",
-	"CLAUDE_",
-	"GIT_",
-	"NPM_CONFIG_",
-	"npm_config_",
-	"BUN_CONFIG_",
-];
-const DROPPED_KEYS = [
-	"CODEX_HOME",
-	"NODE_PATH",
-	"BUN_OPTIONS",
-	"XDG_CONFIG_HOME",
-	"GITHUB_TOKEN",
-	"GH_TOKEN",
-];
+/** The only inherited settings the consumer keeps: locale, terminal, temporary directory. */
+export const KEPT_KEYS = ["LANG", "TERM", "TMPDIR"] as const;
+const KEPT_PREFIXES = ["LC_"] as const;
 
 /**
- * The consumer environment over `source`: scratch HOME, configuration and
- * Bun cache under `parent`, and no inherited routing, credentials or
- * install configuration. `dropped` names the keys left out, never values.
+ * Set by the proof in the consumer environment once its own controls and
+ * denial witnesses have passed. The suite's sandboxed denial test skips
+ * only under it, since macOS refuses a nested sandbox inside the proof's.
+ */
+export const PROOF_DENIAL_VARIABLE = "PROVE_INSTALLATION_DENIAL";
+
+/**
+ * The consumer environment over `source`, built from an allowlist: the
+ * kept locale, terminal and temporary directory settings, then a scratch
+ * HOME, configuration and Bun cache under `parent`, the given PATH and
+ * `NO_COLOR`. Everything else is dropped; `dropped` names the keys, never
+ * values.
  */
 export function consumerEnv(
 	source: Record<string, string | undefined>,
@@ -240,14 +237,11 @@ export function consumerEnv(
 	const dropped: string[] = [];
 	for (const [key, value] of Object.entries(source)) {
 		if (value === undefined) continue;
-		if (
-			DROPPED_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
-			DROPPED_KEYS.includes(key)
-		) {
-			dropped.push(key);
-			continue;
-		}
-		env[key] = value;
+		const kept =
+			(KEPT_KEYS as readonly string[]).includes(key) ||
+			KEPT_PREFIXES.some((prefix) => key.startsWith(prefix));
+		if (kept) env[key] = value;
+		else dropped.push(key);
 	}
 	return {
 		env: {
