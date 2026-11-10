@@ -25,6 +25,8 @@
  *     --evidence <dir> [--source <repository>] [--avoid <root>]...
  *     [--drop-avoided-path]
  *
+ * The consumer environment carries no inherited credentials or install
+ * configuration (`consumerEnv`); the report names the dropped keys.
  * `--source` defaults to this repository. `--drop-avoided-path` removes PATH
  * entries inside an avoided root from the consumer environment.
  */
@@ -207,33 +209,56 @@ export function run(
 	};
 }
 
-/** The consumer environment: scratch HOME and config, no inherited routing. */
-function consumerEnv(parent: string, path: string): Record<string, string> {
+const DROPPED_PREFIXES = [
+	"SHEPHERD_",
+	"CLAUDE_",
+	"GIT_",
+	"NPM_CONFIG_",
+	"npm_config_",
+	"BUN_CONFIG_",
+];
+const DROPPED_KEYS = [
+	"CODEX_HOME",
+	"NODE_PATH",
+	"BUN_OPTIONS",
+	"XDG_CONFIG_HOME",
+	"GITHUB_TOKEN",
+	"GH_TOKEN",
+];
+
+/**
+ * The consumer environment over `source`: scratch HOME, configuration and
+ * Bun cache under `parent`, and no inherited routing, credentials or
+ * install configuration. `dropped` names the keys left out, never values.
+ */
+export function consumerEnv(
+	source: Record<string, string | undefined>,
+	parent: string,
+	path: string,
+): { env: Record<string, string>; dropped: string[] } {
 	const env: Record<string, string> = {};
-	for (const [key, value] of Object.entries(process.env)) {
+	const dropped: string[] = [];
+	for (const [key, value] of Object.entries(source)) {
 		if (value === undefined) continue;
 		if (
-			key.startsWith("SHEPHERD_") ||
-			key.startsWith("CLAUDE_") ||
-			key.startsWith("GIT_") ||
-			["CODEX_HOME", "NODE_PATH", "BUN_OPTIONS", "XDG_CONFIG_HOME"].includes(
-				key,
-			)
-		)
+			DROPPED_PREFIXES.some((prefix) => key.startsWith(prefix)) ||
+			DROPPED_KEYS.includes(key)
+		) {
+			dropped.push(key);
 			continue;
+		}
 		env[key] = value;
 	}
-	const home = join(parent, "home");
-	const config = join(parent, "config");
-	mkdirSync(home, { recursive: true });
-	mkdirSync(config, { recursive: true });
 	return {
-		...env,
-		HOME: home,
-		XDG_CONFIG_HOME: config,
-		BUN_INSTALL_CACHE_DIR: join(parent, "bun-cache"),
-		PATH: path,
-		NO_COLOR: "1",
+		env: {
+			...env,
+			HOME: join(parent, "home"),
+			XDG_CONFIG_HOME: join(parent, "config"),
+			BUN_INSTALL_CACHE_DIR: join(parent, "bun-cache"),
+			PATH: path,
+			NO_COLOR: "1",
+		},
+		dropped: dropped.sort(),
 	};
 }
 
@@ -269,7 +294,9 @@ async function prove(args: Args): Promise<boolean> {
 				.filter((entry) => !avoidedOnPath.includes(entry))
 				.join(":")
 		: inherited;
-	const env = consumerEnv(parent, path);
+	const { env, dropped } = consumerEnv(process.env, parent, path);
+	mkdirSync(env.HOME ?? "", { recursive: true });
+	mkdirSync(env.XDG_CONFIG_HOME ?? "", { recursive: true });
 	const steps: { name: string; code: number | null; expected?: number }[] = [];
 	const save = (name: string, result: Ran) => {
 		writeFileSync(join(args.evidence, `${name}.stdout`), result.stdout);
@@ -314,6 +341,7 @@ async function prove(args: Args): Promise<boolean> {
 				: `none: ${process.platform === "darwin" ? "no roots given" : "not macOS"}`,
 		avoidedPathEntries: avoidedOnPath,
 		droppedAvoidedPath: args.dropAvoidedPath,
+		droppedEnv: dropped,
 		steps,
 	};
 	const finish = (ok: boolean, failure?: string) => {

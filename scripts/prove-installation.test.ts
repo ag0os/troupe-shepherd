@@ -11,6 +11,7 @@ import { join } from "node:path";
 import {
 	avoidedPathEntries,
 	checkParent,
+	consumerEnv,
 	denialProbeArgv,
 	denialProfile,
 	judgeProbe,
@@ -187,5 +188,56 @@ describe("the denial self check needs a positive witness", () => {
 		expect(judgeProbe({ code: 0, stdout: "" })).toBe("unproven");
 		expect(judgeProbe({ code: 3, stdout: "ENOTDIR\n" })).toBe("unproven");
 		expect(judgeProbe({ code: 0, stdout: "EPERM extra\n" })).toBe("unproven");
+	});
+});
+
+// M1: the consumer environment inherits no credentials or install
+// configuration, so the proof's cold install is token free by construction.
+describe("the proof's consumer environment", () => {
+	test("drops credentials, install configuration and routing, by name only", () => {
+		const { env, dropped } = consumerEnv(
+			{
+				PATH: "/usr/bin",
+				HOME: "/real/home",
+				LANG: "C",
+				GITHUB_TOKEN: "secret-1",
+				GH_TOKEN: "secret-2",
+				NPM_CONFIG_REGISTRY: "https://example.invalid",
+				npm_config_userconfig: "/real/home/.npmrc",
+				BUN_CONFIG_REGISTRY: "https://example.invalid",
+				GIT_DIR: "/elsewhere",
+				CLAUDE_CONFIG_DIR: "/real/home/.claude",
+				SHEPHERD_WORKSPACE: "/w",
+				XDG_CONFIG_HOME: "/real/config",
+				NODE_PATH: "/n",
+				BUN_OPTIONS: "--x",
+				CODEX_HOME: "/c",
+			},
+			"/scratch/parent",
+			"/proof/bin:/usr/bin",
+		);
+		expect(dropped).toEqual([
+			"BUN_CONFIG_REGISTRY",
+			"BUN_OPTIONS",
+			"CLAUDE_CONFIG_DIR",
+			"CODEX_HOME",
+			"GH_TOKEN",
+			"GITHUB_TOKEN",
+			"GIT_DIR",
+			"NODE_PATH",
+			"NPM_CONFIG_REGISTRY",
+			"SHEPHERD_WORKSPACE",
+			"XDG_CONFIG_HOME",
+			"npm_config_userconfig",
+		]);
+		expect(JSON.stringify(dropped)).not.toContain("secret");
+		expect(env).toEqual({
+			PATH: "/proof/bin:/usr/bin",
+			HOME: "/scratch/parent/home",
+			LANG: "C",
+			XDG_CONFIG_HOME: "/scratch/parent/config",
+			BUN_INSTALL_CACHE_DIR: "/scratch/parent/bun-cache",
+			NO_COLOR: "1",
+		});
 	});
 });
