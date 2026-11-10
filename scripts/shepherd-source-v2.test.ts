@@ -17,14 +17,18 @@ import {
 	readSourceInputs,
 	SourceInputError,
 } from "troupe/provenance";
+import { PACKAGE_ROOT, troupeRoot } from "./shepherd-definition";
 import {
 	dependencyIdentity,
 	evaluationInputs,
+	FRAMEWORK_ORIGIN,
 	frameworkRevision,
+	isFrameworkPath,
 	isSourcePath,
 	readV2Source,
 	shepherdStampV2,
 	type V2Layout,
+	v2Inputs,
 } from "./shepherd-source-v2";
 
 // O15: v2 membership is the extracted package's table, read from the
@@ -125,6 +129,8 @@ beforeEach(() => {
 	chmodSync(join(dir, "package/packages/software/tools/publish-check"), 0o755);
 	put("dist/troupe/package.json", "{}\n");
 	put("dist/troupe/lib/agent-format/compiler.ts", "compiler\n");
+	put("dist/troupe/lib/index.ts", "index\n");
+	put("dist/troupe/lib/text-imports.d.ts", "types\n");
 });
 
 afterEach(() => {
@@ -168,6 +174,48 @@ describe("package-relative membership table (O15)", () => {
 		const before = readV2Source(layout).source;
 		put("package/scripts/shepherd-definition.ts", "definition 2\n");
 		expect(readV2Source(layout).source).not.toBe(before);
+	});
+});
+
+/** Framework rows: a path below the installed Troupe, selected or not. */
+const FRAMEWORK_ROWS: [string, boolean, string][] = [
+	["package.json", true, "metadata"],
+	["lib/index.ts", true, "main entry"],
+	["lib/text-imports.d.ts", true, "type entry"],
+	["lib/agent-format/compiler.ts", true, "library"],
+	["lib/agent-format/adapters/claude.ts", true, "nested library"],
+	["lib/entries/cli.ts", true, "export entry"],
+	["lib/agent-format/compiler.test.ts", false, "library test"],
+	["lib/agent-format/__fixtures__/a.md", false, "library fixture"],
+	["lib/entries/__snapshots__/a.snap", false, "library snapshot"],
+	["lib/shepherd/tool.ts", false, "an agent's code in Troupe"],
+	["lib/other.ts", false, "outside the members"],
+	["scripts/compile.ts", false, "tooling"],
+	["agents/shepherd.md", false, "an agent declaration"],
+	["extractions/shepherd/package.json", false, "an extraction"],
+	["lib/agent-format/.DS_Store", false, "host byproduct"],
+];
+
+describe("the framework origin is Troupe's library members", () => {
+	for (const [path, selected, why] of FRAMEWORK_ROWS) {
+		test(`${path}: ${selected ? "selected" : "not selected"} (${why})`, () => {
+			put(`dist/troupe/${path}`, `${path}\n`);
+			const paths = readV2Source(layout).entries.map((entry) => entry.path);
+			expect(paths.includes(`framework/troupe/${path}`)).toBe(selected);
+			expect(isFrameworkPath(path)).toBe(selected);
+		});
+	}
+
+	test("the installed Troupe contributes no tests, tooling or agent code", () => {
+		const [framework] = v2Inputs({
+			packageRoot: PACKAGE_ROOT,
+			troupeRoot: troupeRoot(PACKAGE_ROOT),
+		});
+		if (framework?.origin !== FRAMEWORK_ORIGIN) throw new Error("no framework");
+		const paths = readSourceInputs(framework).files.map((file) => file.path);
+		expect(paths.length).toBeGreaterThan(0);
+		expect(paths.filter((path) => !isFrameworkPath(path))).toEqual([]);
+		expect(paths.some((path) => /shepherd|\.test\.ts$/.test(path))).toBe(false);
 	});
 });
 

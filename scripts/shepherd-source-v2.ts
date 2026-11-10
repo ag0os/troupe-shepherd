@@ -112,6 +112,27 @@ function isTestPath(path: string): boolean {
 	);
 }
 
+/**
+ * Troupe's library members, the only installed bytes the framework origin
+ * selects. A Git dependency installs the whole repository, so anything
+ * wider would hash Troupe's tooling, tests and any agents it still holds.
+ */
+export const FRAMEWORK_FILES = [
+	"lib/index.ts",
+	"lib/text-imports.d.ts",
+	"package.json",
+] as const;
+export const FRAMEWORK_TREES = ["lib/agent-format", "lib/entries"] as const;
+
+/** Whether a path below the installed Troupe is part of the framework origin. */
+export function isFrameworkPath(path: string): boolean {
+	if (excluded(path)) return false;
+	if ((FRAMEWORK_FILES as readonly string[]).includes(path)) return true;
+	return FRAMEWORK_TREES.some(
+		(dir) => path.startsWith(`${dir}/`) && !isTestPath(path),
+	);
+}
+
 /** Whether a package-relative path is part of the v2 package origin. */
 export function isSourcePath(path: string): boolean {
 	if (excluded(path)) return false;
@@ -183,9 +204,9 @@ export function v2Inputs(layout: V2Layout): SourceInputDefinition[] {
 		{
 			origin: FRAMEWORK_ORIGIN,
 			root: layout.troupeRoot,
-			files: ["package.json"],
-			trees: [{ dir: "lib" }],
-			exclude: excluded,
+			files: FRAMEWORK_FILES,
+			trees: FRAMEWORK_TREES.map((dir) => ({ dir })),
+			exclude: (path) => !isFrameworkPath(path),
 			dependency: dependencyIdentity(layout.packageRoot),
 		},
 		{
