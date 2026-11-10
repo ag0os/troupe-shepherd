@@ -1,22 +1,19 @@
 #!/usr/bin/env bun
 /**
  * Where the installed Troupe's runtime imports resolve (C8, C9). Troupe's
- * staged sources import `typescript`, `yaml` and `zod`; this package must
- * supply them from its own `node_modules`, at the versions its `bun.lock`
- * records, under every tool that loads them: the runtime, `bun test`,
- * `bun build` and `tsc`.
+ * library imports `typescript`, `yaml` and `zod` and declares no copies of
+ * its own here; this package must supply them from its own `node_modules`,
+ * at the versions its `bun.lock` records, under every tool that loads them:
+ * the runtime, `bun test`, `bun build` and `tsc`.
  *
- * Bun 1.2.22 installs a folder dependency as per-file symlinks and resolves
- * a symlinked module from its real path, the stage. In the in-repo layout
- * the stage sits inside the Troupe checkout, so its imports would otherwise
- * walk up to the checkout's own `node_modules` before `NODE_PATH` is
- * consulted; `setup:extractions` links the stage's parent `node_modules` to
- * this package's. This script is the guard: it fails when any import
- * resolves anywhere else or at another version.
+ * Troupe is installed as a regular directory at `node_modules/troupe`, so
+ * its imports walk up to this package's `node_modules` with no link and no
+ * `NODE_PATH`. This script is the guard: it fails when any import resolves
+ * anywhere else or at another version.
  *
  * Every probe runs with `--no-install` (auto-install ignores declared
- * ranges) and `NODE_PATH=<package>/node_modules`, from probe files it writes
- * under `node_modules/.troupe-probe/` and removes afterwards.
+ * ranges) and without `NODE_PATH`, from probe files it writes under
+ * `node_modules/.troupe-probe/` and removes afterwards.
  *
  * Usage:
  *   bun --no-install scripts/resolution.ts [--json]
@@ -65,19 +62,16 @@ export interface ResolutionOptions {
 
 const PROBE_DIR = "node_modules/.troupe-probe";
 
-function probeEnv(pkg: string): NodeJS.ProcessEnv {
-	return {
-		...process.env,
-		NO_COLOR: "1",
-		NODE_PATH: join(pkg, "node_modules"),
-	};
+function probeEnv(): NodeJS.ProcessEnv {
+	const { NODE_PATH: _, ...env } = process.env;
+	return { ...env, NO_COLOR: "1" };
 }
 
 function run(argv: string[], pkg: string): string {
 	const [command, ...args] = argv;
 	const result = spawnSync(command ?? "", args, {
 		cwd: pkg,
-		env: probeEnv(pkg),
+		env: probeEnv(),
 		encoding: "utf8",
 		maxBuffer: 1 << 28,
 	});

@@ -3,12 +3,11 @@ import { readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { PACKAGE_ROOT, troupeRoot } from "./shepherd-definition";
 
-// C8 and C9 under the gates: the staged Troupe's runtime imports, resolved
-// from the stage's real directory as a bundler or `bun test` resolves them,
-// land in this package's own node_modules at the versions its bun.lock
-// records. Resolution is asserted, not the link that provides it, so a
-// missing stage-parent link (or any other route to another copy) fails
-// `bun test`.
+// C8 and C9 under the gates: the installed Troupe's runtime imports,
+// resolved from its real directory as a bundler or `bun test` resolves
+// them, land in this package's own node_modules at the versions its
+// bun.lock records. Resolution is asserted, not the layout that provides
+// it, so any route to another copy fails `bun test`.
 
 const RUNTIME = ["typescript", "yaml", "zod"];
 
@@ -37,11 +36,11 @@ function packageDir(entry: string, name: string): string {
 	throw new Error(`no package.json named ${name} above ${entry}`);
 }
 
-describe("the stage's runtime imports resolve to the package's locked copies (C8, C9)", () => {
-	const stage = realpathSync(troupeRoot(PACKAGE_ROOT));
+describe("the installed Troupe's runtime imports resolve to the package's locked copies (C8, C9)", () => {
+	const installed = realpathSync(troupeRoot(PACKAGE_ROOT));
 	for (const name of RUNTIME) {
 		test(name, () => {
-			const entry = realpathSync(Bun.resolveSync(name, stage));
+			const entry = realpathSync(Bun.resolveSync(name, installed));
 			const dir = packageDir(entry, name);
 			const version = JSON.parse(
 				readFileSync(join(dir, "package.json"), "utf8"),

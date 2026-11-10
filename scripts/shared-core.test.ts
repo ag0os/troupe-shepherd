@@ -71,7 +71,6 @@ const env = {
 	XDG_CONFIG_HOME: xdg,
 	SHEPHERD_WORKSPACE: workspace,
 	PATH: `${fakes}:${process.env.PATH}`,
-	NODE_PATH: join(copy, "node_modules"),
 	NO_COLOR: "1",
 };
 

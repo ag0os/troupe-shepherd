@@ -286,7 +286,6 @@ const child = Bun.spawnSync(
 			...process.env,
 			HOME: home,
 			XDG_CONFIG_HOME: join(scratch, "xdg"),
-			NODE_PATH: join(copy, "node_modules"),
 		},
 		stdout: "pipe",
 		stderr: "pipe",
