@@ -1,7 +1,6 @@
 /**
- * The build identity and compiler the evals use, and the only eval module
- * that imports them. Its two module specifiers are the only lines an
- * extracted copy rewrites; every name below must exist on both sides.
+ * The build identity and compiler the evals use: the evals' only import of
+ * them, from `scripts/eval-source.ts`.
  */
 
 export {

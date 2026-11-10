@@ -2,8 +2,8 @@
 
 A package gives Shepherd three things for one kind of work: module text for the session prompt, tools the session
 runs as `shepherd tool <package> <tool>`, and guides it reads on demand. This document is the whole contract. A
-package written against it needs nothing from Troupe's source, so it can live in Troupe's `packages/`, in a shared
-workspace, or in a repository of its own.
+package written against it needs nothing from Troupe's source, so it can live in this repository's `packages/`, in a
+shared workspace, or in a repository of its own.
 
 ## Layout
 
@@ -233,11 +233,11 @@ writes `Bash(shepherd tool mail unread *)`; because `network: true`, Codex's san
 
 ## Adding a location
 
-The loader takes a list of locations; base and enclosing are the two it is given today. A location outside Troupe,
-such as a checkout of a package repository, would be one more entry in that list, read from a `packages.locations`
-key in the user config (`$XDG_CONFIG_HOME/shepherd/config.json`). That key does not exist yet: which locations are
-trusted is the user's decision, since a read tool in any location gets a no-prompt rule on Claude. Charters would keep
-naming packages exactly as now.
+The loader takes a list of locations; base and enclosing are the two it is given today. A location outside this
+repository, such as a checkout of a package repository, would be one more entry in that list, read from a
+`packages.locations` key in the user config (`$XDG_CONFIG_HOME/shepherd/config.json`). That key does not exist yet:
+which locations are trusted is the user's decision, since a read tool in any location gets a no-prompt rule on Claude.
+Charters would keep naming packages exactly as now.
 
 ## The software package
 
@@ -414,8 +414,8 @@ failed, a changed excluded path or a changed system test; a failed check takes e
 The builder runbook, for a Shepherd starting a Claude Code builder with these hooks, is in `shepherd tool guide software hooks`.
 
 The fourth, `install-skills`, is a write tool: it installs the skills the package carries in `skills/<skill>/` (today
-`imp-feature`, the feature shape as a skill) for Claude Code and Codex. Troupe's copy is the source; an installed copy
-is never edited in place.
+`imp-feature`, the feature shape as a skill) for Claude Code and Codex. This repository's copy is the source; an
+installed copy is never edited in place.
 
 ```
 shepherd tool software install-skills [--repo <dir>] [--json]

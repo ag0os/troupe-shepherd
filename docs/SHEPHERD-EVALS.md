@@ -242,7 +242,7 @@ The spec's initial budget for baseline subjects, scoring and the targeted regres
 
 ## The CI check
 
-The `shepherd-evals (informational)` job in `.github/workflows/ci.yml` runs on every pull request to `main` or `master`. It checks out the PR head commit (not GitHub's synthetic merge) with full history, installs Bun (`bun-version: latest`, as the existing build job does) and Python 3, installs dependencies with `--ignore-scripts` so no PR script runs before the tree is hashed, holds only read permission, runs no model and needs no credentials. The `build` job runs typecheck, Biome and `bun test`.
+The `shepherd-evals (informational)` job in `.github/workflows/ci.yml` runs on every pull request to `main` or `master`. It checks out the PR head commit (not GitHub's synthetic merge) with full history, installs Bun (`bun-version: latest`, as the existing build job does) and Python 3, installs dependencies with `--ignore-scripts` so no PR script runs before the tree is hashed, holds only read permission, runs no model and needs no credentials. The `build` job runs typecheck, Biome and `bun test`. A malformed `troupe-pin.json` makes the verifier refuse, as the build does: the version line's framework part cannot be computed without it.
 
 The check is informational: it never fails a pull request for a missing result or for a result's outcome. It fails only on a committed result that does not verify, or when it cannot decide. Its outcomes:
 
@@ -288,7 +288,7 @@ So a record whose broken parts only the skipped checks would see passes as stale
 2. **Scorer family.** Built: Claude Opus 5.5, effort high. Cross family Codex scoring needs a PR decision, a revised configuration and validation budget.
 3. **Flake policy.** Built: one recorded behavioural rerun, with a complete second attempt pass accepted as `flaky-pass`. The alternative is that any first behavioural failure blocks. Infrastructure handling stays separate.
 4. **E ordering.** Built: completed sequential placement before acceptance within one command counts, regardless of the final exit code; unorderable writes are inconclusive.
-5. **Charter Done line.** None per change: evals run on demand, so no change needs a result before it is done. A charter may instead say how often to run the suite at main, for example after a behavioural change to Shepherd merges; that is forge's to decide, not edited here.
+5. **Charter Done line.** None per change: evals run on demand, so no change needs a result before it is done. A charter may instead say how often to run the suite at main, for example after a behavioural change to Shepherd merges; that is the maintainer's to decide, not edited here.
 6. **Evidence committed per run.** Built: archived evidence per attempt, about 2 MB of native logs per six trial suite plus supporting files, under the export redaction rule. This is an addition to the original result and summary plan, for confirmation.
 7. **Self-certification.** The job, verifier and policy run from the PR head, so a result is an attestation that code review stands behind (see "What a result means").
 8. **Remaining recommendations.** The source membership, dirty build treatment, execution bounds, the initial $10 validation budget and the eleven plus two count correction, all described above.

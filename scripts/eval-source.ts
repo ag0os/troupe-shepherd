@@ -1,9 +1,7 @@
 /**
- * The package's build identity and compiler for the evals, behind the names
- * `evals/shepherd/build-source.ts` re-exports. The original layout gives the
- * same names over the v1 adapter and the legacy wrapper; here they are the
- * v2 identity (`shepherd-source-v2.ts`) and `troupe/compiler`, so the eval
- * code is byte equal in both trees.
+ * The package's build identity and compiler for the evals: the names
+ * `evals/shepherd/build-source.ts` re-exports, over the v2 identity
+ * (`shepherd-source-v2.ts`) and `troupe/compiler`.
  *
  * A build's provenance keeps v1's shape. `revision` is the package's Git
  * `HEAD`; `sourceDirty` is the package origin's `dirty` marker (its selected
@@ -381,7 +379,7 @@ export async function compileAgent(options: {
 		definition: shepherdDefinition(root, {
 			stamp: stampPolicy(stamp ?? gitStamp(), resolve(root)),
 		}),
-		// Relative to the working directory, as in the original layout.
+		// Relative to the working directory.
 		outFile: resolve(outFile),
 	});
 	return captured

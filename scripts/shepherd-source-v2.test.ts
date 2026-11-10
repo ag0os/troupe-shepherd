@@ -37,7 +37,7 @@ import {
 	v2Inputs,
 } from "./shepherd-source-v2";
 
-// O15: v2 membership is the extracted package's table, read from the
+// O15: v2 membership is the package's table, read from the
 // filesystem by the same predicate `isSourcePath` answers. Fixtures only.
 
 /** The miniature package: a literal list, with no v1 adapter or legacy wrapper. */
