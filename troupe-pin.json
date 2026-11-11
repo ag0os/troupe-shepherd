@@ -1,22 +1,22 @@
 {
-	"tag": "v0.1",
-	"commit": "3cce0f41106df60f81b97ae3552c6a2948825bc0",
+	"tag": "v0.1.1",
+	"commit": "a8c7911215974fcf2498d739981bbbfa6a047286",
 	"owner": "ag0os",
 	"repository": "troupe",
-	"digest": "sha256:275e16b1837c3e6cdbf288f1dfc3049775517345545a5479d54721ee564c8cc5",
+	"digest": "sha256:b05b665ee4f6daa3b4e5c6ae8d77fdec4c573641ebae4e770fe0d01a42246ce8",
 	"proofs": [
 		{
-			"date": "2026-11-10",
+			"date": "2026-11-11",
 			"bun": "1.2.22",
 			"checks": [
-				"digest derived from the v0.1 Git tree by scripts/pin-digest.ts equals the installed framework digest",
-				"cold install with the network and no token, then frozen install",
-				"resolution guard: four probes without NODE_PATH",
+				"digest derived from the v0.1.1 Git tree by scripts/pin-digest.ts equals the installed framework digest",
+				"bun install with the network in an existing clone (not cold), then frozen install",
+				"resolution guard: bun --no-install scripts/resolution.ts",
 				"typecheck, Biome and the full suite",
 				"bun run compile shepherd; shepherd --version prints both origins unmarked",
-				"doctor under a scratch HOME and XDG_CONFIG_HOME"
+				"a shepherd tool output longer than 65,536 bytes arrives whole through a pipe, on a fixture workspace under a scratch HOME"
 			],
-			"evidence": "reproducible with scripts/pin-digest.ts on the v0.1 tree and scripts/prove-installation.ts; the maintainer's run records are not published"
+			"evidence": "reproducible with scripts/pin-digest.ts on the v0.1.1 tree and the commands named in the checks; the maintainer's run records are not published"
 		}
 	]
 }

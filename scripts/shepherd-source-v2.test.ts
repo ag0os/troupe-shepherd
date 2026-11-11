@@ -465,11 +465,11 @@ describe("revision markers (C17)", () => {
 // C24: the framework prints the pin's full commit unmarked only when the
 // request, the lockfile and the installed bytes all agree with the pin.
 describe("the pin record and the framework marker (C24)", () => {
-	const COMMIT = "3cce0f41106df60f81b97ae3552c6a2948825bc0";
+	const COMMIT = "a8c7911215974fcf2498d739981bbbfa6a047286";
 	const REQUEST = `git+https://github.com/ag0os/troupe.git#${COMMIT}`;
 	/** Verbatim from this package's regenerated bun.lock (Bun 1.2.22, GitHub tarball). */
 	const TARBALL_LOCK =
-		'"troupe": ["troupe@github:ag0os/troupe#3cce0f4", { "dependencies": { "typescript": "^5.6.2", "yaml": "^2", "zod": "^4" } }, "ag0os-troupe-3cce0f4"],';
+		'"troupe": ["troupe@github:ag0os/troupe#a8c7911", { "dependencies": { "typescript": "^5.6.2", "yaml": "^2", "zod": "^4" } }, "ag0os-troupe-a8c7911"],';
 	/**
 	 * Derived, not captured: spike S-2's true Git tuple (row 7, taken at
 	 * 36bda79 through a Git shim) with both commits replaced by the tag
@@ -483,7 +483,7 @@ describe("the pin record and the framework marker (C24)", () => {
 		readSourceInputs(v2Inputs(layout)[0] as SourceInputDefinition).provenance
 			.digest;
 	const pin = (overrides: Record<string, unknown> = {}) => ({
-		tag: "v0.1",
+		tag: "v0.1.1",
 		commit: COMMIT,
 		owner: "ag0os",
 		repository: "troupe",
@@ -595,8 +595,8 @@ describe("the pin record and the framework marker (C24)", () => {
 			JSON.stringify({ dependencies: { troupe: REQUEST } }),
 		);
 		for (const tuple of [
-			TARBALL_LOCK.replace("#3cce0f4", "#0123456"),
-			TARBALL_LOCK.replace("#3cce0f4", "#3cce0f"),
+			TARBALL_LOCK.replace("#a8c7911", "#0123456"),
+			TARBALL_LOCK.replace("#a8c7911", "#a8c791"),
 			TARBALL_LOCK.replace("ag0os/troupe", "someone/troupe"),
 			GIT_LOCK.replace(`.git#${COMMIT}`, `.git#${other}`),
 			'"troupe": ["troupe@file:../dist/troupe", {}],',
@@ -613,7 +613,7 @@ describe("the pin record and the framework marker (C24)", () => {
 		const bad: [string, string][] = [
 			["not JSON", "{ tag: v0.1"],
 			["an array", "[]\n"],
-			["a short commit", JSON.stringify(pin({ commit: "3cce0f4" }))],
+			["a short commit", JSON.stringify(pin({ commit: "a8c7911" }))],
 			["no digest", JSON.stringify({ ...pin(), digest: undefined })],
 			["a bare digest", JSON.stringify(pin({ digest: "0".repeat(64) }))],
 			["an extra key", JSON.stringify(pin({ note: "x" }))],
