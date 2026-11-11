@@ -22,7 +22,7 @@ The stamp's provenance JSON carries `marker: "local" | "dirty" | null` for each 
 
 ```json
 {
-	"tag": "v0.1",
+	"tag": "v0.1.1",
 	"commit": "<40 hex>",
 	"owner": "ag0os",
 	"repository": "troupe",
@@ -39,7 +39,7 @@ Exactly these keys; a proof has exactly `date`, `bun`, `checks` (nonempty) and `
 bun scripts/pin-digest.ts <a clone holding the tag> <tag> --json
 ```
 
-reads the members' blobs with `git ls-tree` and `git cat-file` and frames them as above. Compare it with the installed digest before committing a pin; a `.gitattributes` with `export-subst` or `export-ignore` in Troupe would make GitHub's tarball bytes differ from the blobs (there is none at `v0.1`).
+reads the members' blobs with `git ls-tree` and `git cat-file` and frames them as above. Compare it with the installed digest before committing a pin; a `.gitattributes` with `export-subst` or `export-ignore` in Troupe would make GitHub's tarball bytes differ from the blobs (there is none at `v0.1.1`).
 
 To move the pin: change the commit in `package.json`, run `bun install` with the network, derive the digest from the new tag's tree, write the new record with its proofs, and check that `bun run compile shepherd` prints the framework part unmarked.
 

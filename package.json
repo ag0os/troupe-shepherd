@@ -17,7 +17,7 @@
 		"prepare": "husky"
 	},
 	"dependencies": {
-		"troupe": "git+https://github.com/ag0os/troupe.git#3cce0f41106df60f81b97ae3552c6a2948825bc0",
+		"troupe": "git+https://github.com/ag0os/troupe.git#a8c7911215974fcf2498d739981bbbfa6a047286",
 		"yaml": "^2",
 		"zod": "4.6.5"
 	},

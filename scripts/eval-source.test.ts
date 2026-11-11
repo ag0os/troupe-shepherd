@@ -324,7 +324,7 @@ describe("eval builds and the verifier use the verified framework facts (C24)", 
 	test("a malformed pin is refused by the build and the verifier", async () => {
 		const root = fixture("malformed", {
 			lock: TARBALL,
-			pin: pinText({ commit: "3cce0f4" }),
+			pin: pinText({ commit: COMMIT.slice(0, 7) }),
 		});
 		await expect(build(root)).rejects.toThrow("troupe-pin.json");
 		expect(() => verifierLine(root)).toThrow(PinError);
