@@ -242,7 +242,7 @@ class DurableRecordPrerequisite(unittest.TestCase):
             path[len(workspace) + 1:]: write['input']['content']}).check()
         result = results['E-neg.M3']
         self.assertIsNone(result['outcome'], result['rationale'])
-        pointers = [p for p in result['evidence'] if p.get('callId') == 'toolu_0138LD44CrEryM218Ra11SUp']
+        pointers = [p for p in result['evidence'] if p.get('callId') == 'toolu_010000000000000000000022']
         self.assertEqual(pointers[0]['timestamp'], '2026-10-13T15:11:44.691Z')
         self.assertEqual(pointers[0]['artifact'], 'claude.jsonl')
         self.assertEqual(pointers[0]['line'], 1)
@@ -265,7 +265,7 @@ class DurableRecordPrerequisite(unittest.TestCase):
                           changes=files, removed=['.shepherd/work/in-progress/ledger-capacity/STATUS.md']).check()
         result = results['G-neg.M3']
         self.assertIsNone(result['outcome'], result['rationale'])
-        pointer = next(p for p in result['evidence'] if p.get('callId') == 'toolu_01BfC7uJwqTCT2Uq5mH8wrP2')
+        pointer = next(p for p in result['evidence'] if p.get('callId') == 'toolu_010000000000000000000036')
         self.assertEqual(pointer['timestamp'], '2026-10-13T15:11:35.914Z')
         self.assertEqual(outcome(results, 'G-neg.M1'), 'pass')
         self.assertEqual(outcome(results, 'G-neg.M2'), 'pass')
