@@ -14,4 +14,4 @@ A bug in code that is live in production goes into the Contract first: add the m
 Before you say done, run `<ci command>`: it is the same set CI runs, and a check that could not run is a gap to name, never a pass. Health checks (`<health tools>`) and mutation fail only on findings your PR adds against its merge base; do not edit a baseline to pass. Where a committed baseline still gates, a fix that kills a recorded survivor re-records it in the same PR, with its reason; a snapshot that does not gate re-anchors weekly.
 ```
 
-One real filling, ag0osW3b: `<tests dir>` is `test/contract/`, `<mutation tool>` is mutant, `<ci command>` is `bin/ci` (fetch first), `<health tools>` is exhale.
+A hypothetical filling: `<tests dir>` is `test/contract/`, `<mutation tool>` is mutant, `<ci command>` is `bin/ci` (fetch first), `<health tools>` is exhale.

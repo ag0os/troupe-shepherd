@@ -571,7 +571,7 @@ describe("obligation parsing (CT-4)", () => {
 		);
 	});
 
-	test("AC-010 and AC-10 collide; a second prefix and a missing reason are findings", () => {
+	test("WR-010 and WR-10 collide; a second prefix and a missing reason are findings", () => {
 		writing(
 			[
 				obligation("WR-010"),
@@ -639,7 +639,7 @@ describe("obligation parsing (CT-4)", () => {
 
 describe("convention examples (CT-5)", () => {
 	const MR_TEST = "test/contract/markdown_renderer_contract_test.rb";
-	const LEDGER = "test/contracts/agency_client_port/ledger.yml";
+	const LEDGER = "test/contracts/museum_catalog_port/ledger.yml";
 
 	function mr5(coverage: string) {
 		write("app/services/markdown_renderer.rb", "#\n");
@@ -652,12 +652,12 @@ describe("convention examples (CT-5)", () => {
 		);
 	}
 
-	function ac010(decisions: string) {
+	function mc020(decisions: string) {
 		write(LEDGER, "cases: []\n");
-		write("app/models/agency/client.rb", "#\n");
+		write("app/models/museum/client.rb", "#\n");
 		write(
-			"docs/contracts/agency_client_port.md",
-			`${frontMatter("agency_client_port", { covers: ["app/models/agency/"], tests: ["test/contracts/agency_client_port/"] })}Coverage: 1 obligations; 1 proved by test, 0 by PR evidence, 0 unproved. Suite runs against this implementation.\n\n# Contract: agency client port\n\n### AC-010 Vitor safety\n\nRegistered identities make all D11 document fields immutable.\n\n**Reason.** The Vitor push is held. (D11, Proposal 9; INV-009)\n\nKind: functional. Proof: test, the cases whose \`intent\` names AC-010 in \`${LEDGER}\`.\n${decisions}`,
+			"docs/contracts/museum_catalog_port.md",
+			`${frontMatter("museum_catalog_port", { covers: ["app/models/museum/"], tests: ["test/contracts/museum_catalog_port/"] })}Coverage: 1 obligations; 1 proved by test, 0 by PR evidence, 0 unproved. Suite runs against this implementation.\n\n# Contract: museum catalog port\n\n### MC-020 Neri catalog seal\n\nSealed museum entries keep every D27 catalog field unchanged.\n\n**Reason.** The Neri exhibit awaits approval. (D27, Proposal 6; INV-042)\n\nKind: functional. Proof: test, the cases whose \`intent\` names MC-020 in \`${LEDGER}\`.\n${decisions}`,
 		);
 	}
 
@@ -677,20 +677,20 @@ describe("convention examples (CT-5)", () => {
 		]);
 	});
 
-	test("the AC-010 example needs D11 and INV-009 in its index, never Proposal 9; ledger proof is a path", () => {
-		write("docs/decisions/d11.md", "#\n");
-		write("docs/decisions/inv-009.md", "#\n");
-		ac010("");
+	test("the MC-020 example needs D27 and INV-042 in its index, never Proposal 6; ledger proof is a path", () => {
+		write("docs/decisions/d27.md", "#\n");
+		write("docs/decisions/inv-042.md", "#\n");
+		mc020("");
 		expect(found(["lint"])).toEqual([
-			"docs/contracts/agency_client_port.md:17 decisions-missing",
+			"docs/contracts/museum_catalog_port.md:17 decisions-missing",
 		]);
-		ac010(
-			"\n## Decisions\n\n- D11, `docs/decisions/d11.md`: document fields.\n- INV-009, `docs/decisions/inv-009.md`: the held push.\n",
+		mc020(
+			"\n## Decisions\n\n- D27, `docs/decisions/d27.md`: catalog fields.\n- INV-042, `docs/decisions/inv-042.md`: the sealed exhibit.\n",
 		);
 		expect(found(["lint"])).toEqual([]);
 		rmSync(join(repo, LEDGER));
 		expect(found(["lint"])).toContain(
-			"docs/contracts/agency_client_port.md:19 proof-file-missing",
+			"docs/contracts/museum_catalog_port.md:19 proof-file-missing",
 		);
 	});
 });
@@ -702,8 +702,8 @@ function legacy(file: string, text: string) {
 describe("migration recognition (CT-6)", () => {
 	test("a Code it covers paragraph marks a legacy file: its gaps are warnings", () => {
 		legacy(
-			"agency_client_port",
-			"# Contract: agency client port\n\n**Code it covers.** `app/models/agency/` and `config/routes.rb`.\n\n### AC-001 Vitor link\n\nThe link is kept.\n\n*Because* the push is held.\n\nCovered by the contract suite.\n",
+			"museum_catalog_port",
+			"# Contract: museum catalog port\n\n**Code it covers.** `app/models/museum/` and `config/routes.rb`.\n\n### MC-002 Neri catalog link\n\nThe catalog link is retained.\n\n*Because* the exhibit awaits approval.\n\nCovered by the contract suite.\n",
 		);
 		const { code, report } = json(["lint"]);
 		expect(code).toBe(0);
@@ -721,13 +721,13 @@ describe("migration recognition (CT-6)", () => {
 
 	test("the old heading separator alone marks a legacy file", () => {
 		legacy(
-			"admin_vitor",
-			`# Contract: admin Vitor\n\n### AV-1 ${EM} the workspace\n\nIt opens.\n\n**Reason:** admins need it.\n`,
+			"admin_neri",
+			`# Contract: admin Neri\n\n### AN-1 ${EM} the workspace\n\nIt opens.\n\n**Reason:** admins need it.\n`,
 		);
 		expect(found(["lint"])).toEqual([
-			"docs/contracts/admin_vitor.md coverage-missing",
-			"docs/contracts/admin_vitor.md:1 legacy-format",
-			"docs/contracts/admin_vitor.md:3 legacy-proof-unclassified",
+			"docs/contracts/admin_neri.md coverage-missing",
+			"docs/contracts/admin_neri.md:1 legacy-format",
+			"docs/contracts/admin_neri.md:3 legacy-proof-unclassified",
 		]);
 	});
 
@@ -814,16 +814,16 @@ describe("retirement, static (CT-9)", () => {
 describe("dash handling (CT-12)", () => {
 	test("legacy dash headings and dashes in prose get only their structural findings", () => {
 		legacy(
-			"admin_vitor",
-			`# Contract: admin Vitor${EN}workspace\n\n### AV-1 ${EM} the workspace opens\n\nIt opens ${EM} always ${EN} fast.\n\n**Reason.** Admins${EM}need it.\n`,
+			"admin_neri",
+			`# Contract: admin Neri${EN}workspace\n\n### AN-1 ${EM} the workspace opens\n\nIt opens ${EM} always ${EN} fast.\n\n**Reason.** Admins${EM}need it.\n`,
 		);
 		writing(
 			`${obligation("WR-1", { statement: `Posts render ${EM} all of them ${EN} quickly.`, reason: `Readers${EN}first.` })}`,
 		);
 		expect(found(["lint"])).toEqual([
-			"docs/contracts/admin_vitor.md coverage-missing",
-			"docs/contracts/admin_vitor.md:1 legacy-format",
-			"docs/contracts/admin_vitor.md:3 legacy-proof-unclassified",
+			"docs/contracts/admin_neri.md coverage-missing",
+			"docs/contracts/admin_neri.md:1 legacy-format",
+			"docs/contracts/admin_neri.md:3 legacy-proof-unclassified",
 		]);
 		const [, writingFile] = json(["lint"]).report.result.files as {
 			obligations: { title: string }[];
@@ -1138,8 +1138,8 @@ describe("deterministic output (CT-17)", () => {
 		const steps = [
 			() =>
 				legacy(
-					"admin_vitor",
-					`# Contract: admin\n\n### AV-1 ${EM} opens\n\nIt opens.\n`,
+					"admin_neri",
+					`# Contract: admin\n\n### AN-1 ${EM} opens\n\nIt opens.\n`,
 				),
 			() =>
 				writing(obligation("WR-1", { reason: null }), {
@@ -1158,7 +1158,7 @@ describe("deterministic output (CT-17)", () => {
 		build("forward");
 		const args = [
 			"docs/contracts/zed.md",
-			"docs/contracts/admin_vitor.md",
+			"docs/contracts/admin_neri.md",
 			"docs/contracts/writing.md",
 		];
 		const first = run(["lint", ...args]);
@@ -1299,8 +1299,8 @@ describe("coverage arithmetic (CT-7)", () => {
 
 	test("legacy proof is unclassified and PRODUCT proof is unknown, never complete", () => {
 		legacy(
-			"admin_vitor",
-			`# Contract: admin\n\nCoverage: 1 obligations; 1 proved by test, 0 by PR evidence, 0 unproved. Suite runs against this implementation.\n\n### AV-1 ${EM} opens\n\nIt opens.\n\n**Reason.** Admins.\n`,
+			"admin_neri",
+			`# Contract: admin\n\nCoverage: 1 obligations; 1 proved by test, 0 by PR evidence, 0 unproved. Suite runs against this implementation.\n\n### AN-1 ${EM} opens\n\nIt opens.\n\n**Reason.** Admins.\n`,
 		);
 		write(
 			"PRODUCT.md",
@@ -1309,7 +1309,7 @@ describe("coverage arithmetic (CT-7)", () => {
 		const { code, report } = json(["coverage"]);
 		expect(code).toBe(0);
 		expect(report.findings.map((f) => `${f.file} ${f.code}`)).toContain(
-			"docs/contracts/admin_vitor.md coverage-incomplete",
+			"docs/contracts/admin_neri.md coverage-incomplete",
 		);
 		expect(report.result.components).toMatchObject([
 			{
@@ -1321,7 +1321,7 @@ describe("coverage arithmetic (CT-7)", () => {
 				computedLine: null,
 			},
 			{
-				file: "docs/contracts/admin_vitor.md",
+				file: "docs/contracts/admin_neri.md",
 				format: "legacy-file",
 				computed: { obligations: 1, unclassified: 1 },
 				complete: false,
@@ -1428,16 +1428,16 @@ describe("pasteable coverage line (CT-19)", () => {
 
 	test("an incomplete component prints no line and exits 1; zero or several components exit 2", () => {
 		legacy(
-			"admin_vitor",
-			`# Contract: admin\n\n### AV-1 ${EM} opens\n\nIt opens.\n`,
+			"admin_neri",
+			`# Contract: admin\n\n### AN-1 ${EM} opens\n\nIt opens.\n`,
 		);
-		const text = run(["coverage", "--line", "docs/contracts/admin_vitor.md"]);
+		const text = run(["coverage", "--line", "docs/contracts/admin_neri.md"]);
 		expect({ code: text.code, stdout: text.stdout }).toEqual({
 			code: 1,
 			stdout: "",
 		});
 		expect(
-			json(["coverage", "--line", "docs/contracts/admin_vitor.md"]),
+			json(["coverage", "--line", "docs/contracts/admin_neri.md"]),
 		).toMatchObject({
 			code: 1,
 			report: { result: { computedLine: null } },
@@ -1449,7 +1449,7 @@ describe("pasteable coverage line (CT-19)", () => {
 				"coverage",
 				"--line",
 				"docs/contracts/writing.md",
-				"docs/contracts/admin_vitor.md",
+				"docs/contracts/admin_neri.md",
 			]).code,
 		).toBe(2);
 		rmSync(join(repo, "docs/contracts"), { recursive: true });
@@ -1458,22 +1458,22 @@ describe("pasteable coverage line (CT-19)", () => {
 });
 
 describe("convention examples keep their excerpt totals (CT-5)", () => {
-	test("MR-5 and AC-010 excerpts report drift; completed single-obligation lines pass", () => {
+	test("MR-5 and MC-020 excerpts report drift; completed single-obligation lines pass", () => {
 		write("test/contract/markdown_renderer_contract_test.rb", "#\n");
 		write("docs/decisions/markdown_renderer.md", "#\n");
 		write(
 			"docs/contracts/markdown_renderer.md",
 			`${frontMatter("markdown_renderer", { tests: ["test/contract/markdown_renderer_contract_test.rb"] })}Coverage: 21 obligations; 21 proved by test, 0 by PR evidence, 0 unproved. Suite runs against this implementation.\n\n### MR-5 unsafe URLs lose their URL\n\nThey do.\n\n**Reason.** Script. (D-6)\n\nKind: functional. Proof: test, the five tests named MR-5 in \`test/contract/markdown_renderer_contract_test.rb\`.\n\n## Decisions\n\n- D-6, \`docs/decisions/markdown_renderer.md\`: unsafe URLs are emptied (MR-5).\n`,
 		);
-		write("test/contracts/agency_client_port/ledger.yml", "#\n");
-		write("docs/decisions/d11.md", "#\n");
+		write("test/contracts/museum_catalog_port/ledger.yml", "#\n");
+		write("docs/decisions/d27.md", "#\n");
 		write(
-			"docs/contracts/agency_client_port.md",
-			`${frontMatter("agency_client_port", { tests: ["test/contracts/agency_client_port/"] })}Coverage: 19 obligations; 14 proved by test, 2 by PR evidence, 3 mixed, 0 unproved. Suite runs against this implementation.\n\n### AC-010 Vitor safety\n\nFields are immutable.\n\n**Reason.** Held. (D11, Proposal 9; INV-009)\n\nKind: functional. Proof: test, the cases whose \`intent\` names AC-010 in \`test/contracts/agency_client_port/ledger.yml\`.\n\n## Decisions\n\n- D11, \`docs/decisions/d11.md\`: fields.\n- INV-009, \`docs/decisions/d11.md\`: the push.\n`,
+			"docs/contracts/museum_catalog_port.md",
+			`${frontMatter("museum_catalog_port", { tests: ["test/contracts/museum_catalog_port/"] })}Coverage: 19 obligations; 14 proved by test, 2 by PR evidence, 3 mixed, 0 unproved. Suite runs against this implementation.\n\n### MC-020 Neri catalog seal\n\nSealed catalog fields stay unchanged.\n\n**Reason.** Preserve exhibit labels. (D27, Proposal 6; INV-042)\n\nKind: functional. Proof: test, the cases whose \`intent\` names MC-020 in \`test/contracts/museum_catalog_port/ledger.yml\`.\n\n## Decisions\n\n- D27, \`docs/decisions/d27.md\`: catalog fields.\n- INV-042, \`docs/decisions/d27.md\`: the exhibit.\n`,
 		);
 		expect(found(["coverage"])).toEqual([
-			"docs/contracts/agency_client_port.md:8 coverage-drift",
 			"docs/contracts/markdown_renderer.md:8 coverage-drift",
+			"docs/contracts/museum_catalog_port.md:8 coverage-drift",
 		]);
 		expect(components().map((c) => c.computedLine)).toEqual([
 			coverageLine(1, 1).trim(),
@@ -2183,16 +2183,16 @@ describe("parse structure gates output (fix round 1, findings 3 to 6 and 9)", ()
 			json(["lint"]).report.findings.map((f) => `${f.code} ${f.severity}`),
 		).toEqual(["reason-missing error"]);
 		legacy(
-			"admin_vitor",
-			`# Contract: admin\n\n### AV-1 ${EM} opens\n\nIt opens.\n\n**Reason.**\n`,
+			"admin_neri",
+			`# Contract: admin\n\n### AN-1 ${EM} opens\n\nIt opens.\n\n**Reason.**\n`,
 		);
 		expect(
-			on("docs/contracts/admin_vitor.md").map((f) => f.split(" ")[1]),
+			on("docs/contracts/admin_neri.md").map((f) => f.split(" ")[1]),
 		).toContain("reason-missing");
 		expect(
 			json(["lint"]).report.findings.find(
 				(f) =>
-					f.file === "docs/contracts/admin_vitor.md" &&
+					f.file === "docs/contracts/admin_neri.md" &&
 					f.code === "reason-missing",
 			)?.severity,
 		).toBe("warning");

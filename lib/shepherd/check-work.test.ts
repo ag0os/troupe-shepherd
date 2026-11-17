@@ -495,14 +495,14 @@ describe("record rules", () => {
 			}));
 	const codes = (files: Record<string, string>, charter = software) =>
 		records(files, charter).map(({ code }) => code);
-	const item = "root/.shepherd/work/done/consulting";
-	const live = "root/.shepherd/work/in-progress/consulting";
+	const item = "root/.shepherd/work/done/atlas-page";
+	const live = "root/.shepherd/work/in-progress/atlas-page";
 
 	test("record-note-missing names a done item's PR when no note sits in its directory", () => {
 		expect(
 			records({
 				[`${item}/STATUS.md`]: done(
-					"Merged as #23 (2026-10-14). Measurement note: below.",
+					"Merged as #47 (2026-10-14). Measurement note: below.",
 				),
 				[`${item}/notes.md`]: "# Notes",
 				[`${item}/gate.log`]: "ok",
@@ -511,19 +511,19 @@ describe("record rules", () => {
 			{
 				level: "warn",
 				code: "record-note-missing",
-				file: "work/done/consulting",
-				message: "done item consulting names PR #23 and has no measurements.md",
+				file: "work/done/atlas-page",
+				message: "done item atlas-page names PR #47 and has no measurements.md",
 			},
 		]);
 		expect(
 			records({
-				[`${item}/STATUS.md`]: done("Fast-forwarded to main at 88a6e379."),
+				[`${item}/STATUS.md`]: done("Fast-forwarded to main at a1b2c3d4."),
 			}),
 		).toMatchObject([
 			{
 				code: "record-note-missing",
 				message:
-					"done item consulting names merge 88a6e379 and has no measurements.md",
+					"done item atlas-page names merge a1b2c3d4 and has no measurements.md",
 			},
 		]);
 	});
@@ -532,7 +532,7 @@ describe("record rules", () => {
 		for (const name of ["measurements.md", "t3-measurements.md"])
 			expect(
 				codes({
-					[`${item}/STATUS.md`]: done("Merged as #23."),
+					[`${item}/STATUS.md`]: done("Merged as #47."),
 					[`${item}/${name}`]: "# Measurements",
 					[`${item}/gate.log`]: "ok",
 				}),
@@ -540,7 +540,7 @@ describe("record rules", () => {
 		for (const name of ["measurement.md", "notes-measurements.md"])
 			expect(
 				codes({
-					[`${item}/STATUS.md`]: done("Merged as #23."),
+					[`${item}/STATUS.md`]: done("Merged as #47."),
 					[`${item}/${name}`]: "# Measurements",
 					[`${item}/gate.log`]: "ok",
 				}),
@@ -550,7 +550,7 @@ describe("record rules", () => {
 	test("record-logs-missing names a note without a raw log beside it", () => {
 		expect(
 			records({
-				[`${item}/STATUS.md`]: done("Merged as #23."),
+				[`${item}/STATUS.md`]: done("Merged as #47."),
 				[`${item}/measurements.md`]: "# Measurements",
 				[`${item}/build-report.md`]: "## Discoveries\nnone",
 				[`${item}/brief.md`]: "# Brief",
@@ -560,9 +560,9 @@ describe("record rules", () => {
 			{
 				level: "warn",
 				code: "record-logs-missing",
-				file: "work/done/consulting",
+				file: "work/done/atlas-page",
 				message:
-					"done item consulting has a measurement note and no raw log beside it",
+					"done item atlas-page has a measurement note and no raw log beside it",
 			},
 		]);
 	});
@@ -578,7 +578,7 @@ describe("record rules", () => {
 		])
 			expect(
 				codes({
-					[`${item}/STATUS.md`]: done("Merged as #23."),
+					[`${item}/STATUS.md`]: done("Merged as #47."),
 					[`${item}/measurements.md`]: "# Measurements",
 					[`${item}/${log}`]: "output",
 				}),
@@ -596,23 +596,23 @@ describe("record rules", () => {
 		expect(
 			codes({
 				[`${live}/STATUS.md`]:
-					"---\nstate: in-progress\n---\n# Item\nPR #23 open.",
+					"---\nstate: in-progress\n---\n# Item\nPR #47 open.",
 			}),
 		).toEqual([]);
 		expect(
 			codes({
-				[`${item}/STATUS.md`]: "# Item\n\n## Outcome\nMerged as #23.",
+				[`${item}/STATUS.md`]: "# Item\n\n## Outcome\nMerged as #47.",
 			}),
 		).toEqual([]);
 		expect(
 			codes(
-				{ [`${item}/STATUS.md`]: done("Merged as #23.") },
+				{ [`${item}/STATUS.md`]: done("Merged as #47.") },
 				{ "root/.shepherd/charter.md": "Modules: craft\n" },
 			),
 		).toEqual([]);
 		expect(
 			codes(
-				{ [`${item}/STATUS.md`]: done("Merged as #23.") },
+				{ [`${item}/STATUS.md`]: done("Merged as #47.") },
 				{ "root/.shepherd/charter.md": "A charter about software\n" },
 			),
 		).toEqual([]);
@@ -621,7 +621,7 @@ describe("record rules", () => {
 	test("checkWorkspace reports the record rules", () => {
 		const { workspace, tree } = fixture({
 			...software,
-			[`${item}/STATUS.md`]: done("Merged as #23."),
+			[`${item}/STATUS.md`]: done("Merged as #47."),
 		});
 		expect(
 			checkWorkspace(workspace, tree, config(), TODAY)
@@ -635,12 +635,12 @@ describe("record rules", () => {
 			itemRecord(
 				"---\nstate: done\n---\nPR #3, pull request #4 and PR#5; merged as #6, landed as #7, shipped as #8, issue #99.\nSee https://github.com/ag0os/troupe/pull/6.\n\n## Outcome\nMerged as #6 on 2026-10-14.",
 				[
-					"# Note\nRepo: `insurance_app`\nMerged 1a2b3c4d, merge commit `88A6E379`, main at b300d88; merged deadbee; merged as #3.\n",
+					"# Note\nRepo: `insurance_app`\nMerged 1a2b3c4d, merge commit `A1B2C3D4`, main at b300d88; merged deadbee; merged as #3.\n",
 				],
 			),
 		).toEqual({
 			prs: [3, 4, 5, 6, 7, 8],
-			shas: ["1a2b3c4d", "88a6e379", "b300d88", "deadbee"],
+			shas: ["1a2b3c4d", "a1b2c3d4", "b300d88", "deadbee"],
 			repo: "insurance_app",
 			done: true,
 			outcome: "Merged as #6 on 2026-10-14.",
@@ -653,10 +653,10 @@ describe("record rules", () => {
 		).toEqual({ prs: [18], shas: [], repo: "ag0os/troupe", done: false });
 	});
 
-	const stale = (head: string, outcome = "Merged as #23 (2026-10-14).") =>
+	const stale = (head: string, outcome = "Merged as #47 (2026-10-14).") =>
 		records({
 			[`${item}/STATUS.md`]: done(outcome),
-			[`${item}/measurements.md`]: `# Consulting page\n\n${head}\n\n## 1. Task\nText.\n`,
+			[`${item}/measurements.md`]: `# Atlas page\n\n${head}\n\n## 1. Task\nText.\n`,
 			[`${item}/gate.log`]: "ok",
 		});
 
@@ -665,9 +665,9 @@ describe("record rules", () => {
 			{
 				level: "warn",
 				code: "record-note-stale",
-				file: "work/done/consulting/measurements.md",
+				file: "work/done/atlas-page/measurements.md",
 				message:
-					'consulting/measurements.md says "not landed"; STATUS says "Merged as #23"',
+					'atlas-page/measurements.md says "not landed"; STATUS says "Merged as #47"',
 			},
 		]);
 	});
@@ -694,9 +694,9 @@ describe("record rules", () => {
 			"Status: landed.",
 			"Status: unblocked, then merged.",
 			"The parked branch was blocked, then abandoned for a rebuild.",
-			"status: landed (PR #74 merged 2026-10-19 as 88a6e379, deploy checked; was parked for push permission)",
+			"status: landed (PR #74 merged 2026-10-19 as a1b2c3d4, deploy checked; was parked for push permission)",
 			"Status: merged as #74; was blocked on review, then parked",
-			"Status: merged 88a6e379 after being parked",
+			"Status: merged a1b2c3d4 after being parked",
 		])
 			expect(stale(head)).toEqual([]);
 		expect(stale("Status: not landed, parked").map(({ code }) => code)).toEqual(
@@ -707,7 +707,7 @@ describe("record rules", () => {
 	test("free phrases count only in the head and labels only in the first 40 lines", () => {
 		expect(
 			records({
-				[`${item}/STATUS.md`]: done("Merged as #23 (2026-10-14)."),
+				[`${item}/STATUS.md`]: done("Merged as #47 (2026-10-14)."),
 				[`${item}/measurements.md`]:
 					"# Note\n\nLanded.\n\n## 1. Task\nThe first try was not landed.\n",
 				[`${item}/gate.log`]: "ok",
@@ -719,14 +719,14 @@ describe("record rules", () => {
 		] as const)
 			expect(
 				records({
-					[`${item}/STATUS.md`]: done("Merged as #23 (2026-10-14)."),
+					[`${item}/STATUS.md`]: done("Merged as #47 (2026-10-14)."),
 					[`${item}/measurements.md`]: `# Note\n\n## 1. Task\n${"Text.\n".repeat(line - 4)}Status: parked\n`,
 					[`${item}/gate.log`]: "ok",
 				}).map(({ code }) => code),
 			).toEqual([...expected]);
 		expect(
 			records({
-				[`${item}/STATUS.md`]: done("Merged as #23 (2026-10-14)."),
+				[`${item}/STATUS.md`]: done("Merged as #47 (2026-10-14)."),
 				[`${item}/measurements.md`]: "# Note\n\n## 1. Task\nStatus: parked\n",
 				[`${item}/gate.log`]: "ok",
 			}).map(({ code }) => code),
@@ -735,42 +735,42 @@ describe("record rules", () => {
 
 	test("each landed form in STATUS's Outcome is recognized", () => {
 		for (const [outcome, says] of [
-			["Merged as #23 (2026-10-14).", "Merged as #23"],
-			["Landed as #23.", "Landed as #23"],
-			["Merged 88a6e379.", "Merged 88a6e379"],
-			["Merge commit `88a6e379`.", "Merge commit `88a6e379`"],
+			["Merged as #47 (2026-10-14).", "Merged as #47"],
+			["Landed as #47.", "Landed as #47"],
+			["Merged a1b2c3d4.", "Merged a1b2c3d4"],
+			["Merge commit `a1b2c3d4`.", "Merge commit `a1b2c3d4`"],
 			["Fast-forwarded to main at b300d88.", "Fast-forwarded to main"],
-			["Fast-forwarded to main; PR #23.", "Fast-forwarded to main"],
-			["Live at b300d88 since PR #23.", "Live at b300d88"],
-			["Review is not done yet. Merged as #23.", "Merged as #23"],
-			["Review is not done\n\nMerged as #23.", "Merged as #23"],
-			["- Review not done\n- Merged as #23", "Merged as #23"],
+			["Fast-forwarded to main; PR #47.", "Fast-forwarded to main"],
+			["Live at b300d88 since PR #47.", "Live at b300d88"],
+			["Review is not done yet. Merged as #47.", "Merged as #47"],
+			["Review is not done\n\nMerged as #47.", "Merged as #47"],
+			["- Review not done\n- Merged as #47", "Merged as #47"],
 		])
 			expect(
 				stale("Status: parked", outcome).map(({ message }) => message),
 			).toEqual([
-				`consulting/measurements.md says "parked"; STATUS says "${says}"`,
+				`atlas-page/measurements.md says "parked"; STATUS says "${says}"`,
 			]);
 		for (const outcome of [
-			"Not merged; the PR #23 stays open.",
-			"Live behind a flag, PR #23.",
-			"Parked; PR #23 open.",
-			"PR #23 merged.",
-			"Shipped as #23, 2026-10-14.",
-			"PR #23 is not yet merged.",
-			"PR #23 merged into the plan.",
-			"PR #23 not merged as of 2026-10-14.",
-			"Issue #99 opened on 2026-10-14; PR #23 remains open.",
-			"Not merged as #23; it was reverted.",
-			"Not yet merged 88a6e379 into main.",
-			"PR #23 is not\nmerged as #23.",
-			"PR #23 is yet to be\nmerged 88a6e379.",
+			"Not merged; the PR #47 stays open.",
+			"Live behind a flag, PR #47.",
+			"Parked; PR #47 open.",
+			"PR #47 merged.",
+			"Shipped as #47, 2026-10-14.",
+			"PR #47 is not yet merged.",
+			"PR #47 merged into the plan.",
+			"PR #47 not merged as of 2026-10-14.",
+			"Issue #99 opened on 2026-10-14; PR #47 remains open.",
+			"Not merged as #47; it was reverted.",
+			"Not yet merged a1b2c3d4 into main.",
+			"PR #47 is not\nmerged as #47.",
+			"PR #47 is yet to be\nmerged a1b2c3d4.",
 		])
 			expect(stale("Status: parked", outcome)).toEqual([]);
 		expect(
 			records({
 				[`${item}/STATUS.md`]:
-					"---\nstate: done\n---\n# Item\nMerged as #23.\n",
+					"---\nstate: done\n---\n# Item\nMerged as #47.\n",
 				[`${item}/measurements.md`]: "# Note\nStatus: parked\n",
 				[`${item}/gate.log`]: "ok",
 			}),
@@ -783,15 +783,15 @@ describe("record rules", () => {
 				[`${live}/STATUS.md`]:
 					"---\nstate: in-progress\n---\n# Item\nPR #74 open.",
 				[`${live}/t2-measurements.md`]:
-					"# Note\nMerged 88a6e379 into main.\n\n## 1. Task\n- status: parked for permission to push\n",
+					"# Note\nMerged a1b2c3d4 into main.\n\n## 1. Task\n- status: parked for permission to push\n",
 			}),
 		).toEqual([
 			{
 				level: "warn",
 				code: "record-note-stale",
-				file: "work/in-progress/consulting/t2-measurements.md",
+				file: "work/in-progress/atlas-page/t2-measurements.md",
 				message:
-					'consulting/t2-measurements.md says "parked"; its head names merge 88a6e379',
+					'atlas-page/t2-measurements.md says "parked"; its head names merge a1b2c3d4',
 			},
 		]);
 		expect(
@@ -811,25 +811,25 @@ describe("record rules", () => {
 			{
 				code: "record-note-missing",
 				message:
-					"done item consulting names merge abcdefa and has no measurements.md",
+					"done item atlas-page names merge abcdefa and has no measurements.md",
 			},
 		]);
 		expect(
 			records({
 				[`${live}/STATUS.md`]:
-					"---\nstate: in-progress\n---\n# Item\nPR #23 open.",
+					"---\nstate: in-progress\n---\n# Item\nPR #47 open.",
 				[`${live}/measurements.md`]:
 					"# Note\nMerge commit abcdefa.\n\n## 1. Task\nStatus: parked\n",
 			}).map(({ message }) => message),
 		).toEqual([
-			'consulting/measurements.md says "parked"; its head names merge abcdefa',
+			'atlas-page/measurements.md says "parked"; its head names merge abcdefa',
 		]);
 		expect(
-			stale("Status: parked", "Live at abcdefa; PR #23.").map(
+			stale("Status: parked", "Live at abcdefa; PR #47.").map(
 				({ message }) => message,
 			),
 		).toEqual([
-			'consulting/measurements.md says "parked"; STATUS says "Live at abcdefa"',
+			'atlas-page/measurements.md says "parked"; STATUS says "Live at abcdefa"',
 		]);
 	});
 
@@ -837,7 +837,7 @@ describe("record rules", () => {
 		expect(
 			codes(
 				{
-					[`${item}/STATUS.md`]: done("Merged as #23."),
+					[`${item}/STATUS.md`]: done("Merged as #47."),
 					"root/.shepherd/integrations/software.md":
 						"---\nname: software\ntype: domain\ndescription: rules\nbudget: 20\n---\nA namesake.\n",
 				},
@@ -846,7 +846,7 @@ describe("record rules", () => {
 		).toEqual([]);
 		const { workspace } = fixture({
 			...software,
-			[`${item}/STATUS.md`]: done("Merged as #23."),
+			[`${item}/STATUS.md`]: done("Merged as #47."),
 			"packages/software/MODULE.md": packageText(
 				"software",
 				"",
@@ -872,7 +872,7 @@ describe("record rules", () => {
 					fixture(
 						{
 							...software,
-							[`${item}/STATUS.md`]: done("Merged as #23."),
+							[`${item}/STATUS.md`]: done("Merged as #47."),
 							[`${item}/measurements.md`]: "# Measurements",
 							"outside/gate.log": "ok",
 							"outside/logs/output.txt": "ok",
@@ -887,15 +887,15 @@ describe("record rules", () => {
 			).toEqual(["record-logs-missing"]);
 		expect(
 			codes({
-				"root/.shepherd/work/todo/consulting/STATUS.md":
-					"---\nstate: todo\n---\n# Item\nPR #23 planned.",
-				"root/.shepherd/work/todo/consulting/measurements.md":
-					"# Note\nMerged 88a6e379 into main.\n\n## 1. Task\nStatus: parked\n",
+				"root/.shepherd/work/todo/atlas-page/STATUS.md":
+					"---\nstate: todo\n---\n# Item\nPR #47 planned.",
+				"root/.shepherd/work/todo/atlas-page/measurements.md":
+					"# Note\nMerged a1b2c3d4 into main.\n\n## 1. Task\nStatus: parked\n",
 			}),
 		).toEqual([]);
 	});
 
-	const methodDone = (method: string, outcome = "Merged as #23.") =>
+	const methodDone = (method: string, outcome = "Merged as #47.") =>
 		`---\nstate: done\nmethod: ${method}\nclosed: 2026-10-14\n---\n# Item\n\n## Outcome\n${outcome}\n`;
 
 	test("method: none in STATUS's frontmatter skips the note and logs rules, not the stale rule", () => {
@@ -906,7 +906,7 @@ describe("record rules", () => {
 				[`${item}/measurements.md`]: "# Measurements",
 			}),
 		).toEqual([]);
-		expect(codes({ [`${item}/STATUS.md`]: done("Merged as #23.") })).toEqual([
+		expect(codes({ [`${item}/STATUS.md`]: done("Merged as #47.") })).toEqual([
 			"record-note-missing",
 		]);
 		for (const method of [
@@ -936,7 +936,7 @@ describe("record rules", () => {
 		expect(
 			codes({
 				[`${item}/STATUS.md`]:
-					"---\nstate: done\nrecord:\n  method: none\n---\n# Item\n\n## Outcome\nMerged as #23.\n",
+					"---\nstate: done\nrecord:\n  method: none\n---\n# Item\n\n## Outcome\nMerged as #47.\n",
 			}),
 		).toEqual(["record-note-missing"]);
 		expect(
@@ -948,14 +948,14 @@ describe("record rules", () => {
 		expect(
 			codes({
 				[`${item}/STATUS.md`]:
-					"---\nstate: done\n---\n# Item\nmethod: none\n\n## Outcome\nMerged as #23.\n",
+					"---\nstate: done\n---\n# Item\nmethod: none\n\n## Outcome\nMerged as #47.\n",
 			}),
 		).toEqual(["record-note-missing"]);
 		expect(
 			codes({
 				[`${item}/STATUS.md`]: methodDone(
 					"none",
-					"Merged as #23 (2026-10-14).",
+					"Merged as #47 (2026-10-14).",
 				),
 				[`${item}/measurements.md`]: "# Note\nStatus: parked\n",
 			}),
@@ -965,7 +965,7 @@ describe("record rules", () => {
 	test("a Raw logs: none line with a reason satisfies the logs rule", () => {
 		const logs = (note: string) =>
 			codes({
-				[`${item}/STATUS.md`]: done("Merged as #23."),
+				[`${item}/STATUS.md`]: done("Merged as #47."),
 				[`${item}/measurements.md`]: note,
 			});
 		for (const line of [
@@ -977,7 +977,7 @@ describe("record rules", () => {
 			"**Raw logs:** none, lost",
 		])
 			expect(
-				logs(`# Note\nRepo: \`absync\`\nStatus: landed\n${line}\n`),
+				logs(`# Note\nRepo: \`pebble-sync\`\nStatus: landed\n${line}\n`),
 			).toEqual([]);
 		expect(
 			logs(
@@ -986,7 +986,7 @@ describe("record rules", () => {
 		).toEqual([]);
 		expect(
 			codes({
-				[`${item}/STATUS.md`]: done("Merged as #23."),
+				[`${item}/STATUS.md`]: done("Merged as #47."),
 				[`${item}/measurements.md`]: "# Note\nNo logs line here.\n",
 				[`${item}/t2-measurements.md`]:
 					"# Note\nRaw logs: none, the second try was not kept.\n",
@@ -1003,25 +1003,25 @@ describe("record rules", () => {
 			expect(logs(`# Note\n${line}\n`)).toEqual(["record-logs-missing"]);
 	});
 
-	const verbatim =
-		"- **Status:** landed: #23 merged 2026-10-14, live 2026-10-16 (see the second Status line below). When first written: built and checked (415a87f on refine/consulting-page, not pushed; b668de3 amended by copy-refresh round 2 with his D3 intro order and D5 nav, see copy-refresh/measurements.md). Reason: waiting on his yes to push and open the PR, and hosting. The open choices were settled by his D answers via ag0osPro (15:0x).";
+	const inventedStatus =
+		"- **Status:** landed: #47 merged 2026-10-14, live 2026-10-16 (see the second Status line below). When first written: built and checked (c0ffee1 on refine/atlas-page-page, not pushed; decaf02 amended by label-refresh round 2 with the editor D7 label order and D8 menu, see label-refresh/measurements.md). Reason: waiting on the editor approval to push and open the PR, and hosting. The open choices were settled by the editor D choices via atlasLab (15:0x).";
 
 	test("a status line has one judgment: landed first, merged as #n, #n merged or merged <sha>", () => {
-		expect(stale(verbatim)).toEqual([]);
+		expect(stale(inventedStatus)).toEqual([]);
 		for (const head of [
 			"Status: landed: was not pushed at first",
 			"Status: landed, after a week not pushed",
 			"Status: landed. Not pushed until review.",
 			"- **Status:** Landed; parked before that",
-			"Status: not pushed at first; #23 merged 2026-10-14",
-			"Status: not pushed at first; merged as #23",
-			"Status: not pushed at first; merged 88a6e379",
+			"Status: not pushed at first; #47 merged 2026-10-14",
+			"Status: not pushed at first; merged as #47",
+			"Status: not pushed at first; merged a1b2c3d4",
 		])
 			expect(stale(head)).toEqual([]);
 		for (const head of [
 			"Status: built, not pushed; landed later",
 			"Status: attempted, not landed",
-			"Status: not pushed; PR #23 not merged",
+			"Status: not pushed; PR #47 not merged",
 		])
 			expect(stale(head).map(({ code }) => code)).toEqual([
 				"record-note-stale",
@@ -1031,36 +1031,36 @@ describe("record rules", () => {
 				({ message }) => message,
 			),
 		).toEqual([
-			'consulting/measurements.md says "not pushed"; STATUS says "Merged as #23"',
+			'atlas-page/measurements.md says "not pushed"; STATUS says "Merged as #47"',
 		]);
 	});
 
 	test("only the first Status line in the first 40 lines is judged", () => {
-		expect(stale("Status: landed (PR #23).\n\nStatus: parked")).toEqual([]);
+		expect(stale("Status: landed (PR #47).\n\nStatus: parked")).toEqual([]);
 		expect(stale("Status: landed.\nStatus: not pushed")).toEqual([]);
 		expect(
 			stale("- **Status:** parked.\n- **Status:** landed as of review").map(
 				({ message }) => message,
 			),
 		).toEqual([
-			'consulting/measurements.md says "parked"; STATUS says "Merged as #23"',
+			'atlas-page/measurements.md says "parked"; STATUS says "Merged as #47"',
 		]);
 	});
 
 	test("record-note-stale quotes both phrases as the files write them", () => {
 		expect(
-			stale("Status: Not Pushed yet", "MERGED AS #23 on 2026-10-14.").map(
+			stale("Status: Not Pushed yet", "MERGED AS #47 on 2026-10-14.").map(
 				({ message }) => message,
 			),
 		).toEqual([
-			'consulting/measurements.md says "Not Pushed"; STATUS says "MERGED AS #23"',
+			'atlas-page/measurements.md says "Not Pushed"; STATUS says "MERGED AS #47"',
 		]);
 		expect(
-			stale("Status: parked", "Merged (88a6e379) on 2026-10-14.").map(
+			stale("Status: parked", "Merged (a1b2c3d4) on 2026-10-14.").map(
 				({ message }) => message,
 			),
 		).toEqual([
-			'consulting/measurements.md says "parked"; STATUS says "Merged (88a6e379)"',
+			'atlas-page/measurements.md says "parked"; STATUS says "Merged (a1b2c3d4)"',
 		]);
 	});
 });
