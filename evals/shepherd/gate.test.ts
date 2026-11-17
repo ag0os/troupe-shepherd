@@ -1242,7 +1242,8 @@ describe("pending attempts (fix round 1b, ruling D)", () => {
 	});
 
 	test("the fake names a projects directory as Claude Code 2.1.299 does", () => {
-		// Expected values follow the CLI's `p0`, with made-up fixture names.
+		// Expected values from the CLI's own `p0`, run unchanged in Bun; the `zz` row is
+		// recomputed with the same function for a made-up path.
 		const vectors: [string, string][] = [
 			["/tmp/x/workspace", "-tmp-x-workspace"],
 			[`/${"a".repeat(199)}`, `-${"a".repeat(199)}`],

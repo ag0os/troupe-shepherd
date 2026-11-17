@@ -1004,7 +1004,7 @@ describe("record rules", () => {
 	});
 
 	const inventedStatus =
-		"- **Status:** landed: #47 merged 2026-10-14, live 2026-10-16 (see the second Status line below). When first written: built and checked (c0ffee1 on refine/atlas-page-page, not pushed; decaf02 amended by label-refresh round 2 with the editor D7 label order and D8 menu, see label-refresh/measurements.md). Reason: waiting on the editor approval to push and open the PR, and hosting. The open choices were settled by the editor D choices via atlasLab (15:0x).";
+		"- **Status:** landed: #47 merged 2026-10-14, live 2026-10-16 (see the second Status line below). When first written: built and checked (c0ffee1 on refine/atlas-page, not pushed; decaf02 amended by label-refresh round 2 with the editor D7 label order and D8 menu, see label-refresh/measurements.md). Reason: waiting on the editor approval to push and open the PR, and hosting. The open choices were settled by the editor D choices via atlasLab (15:0x).";
 
 	test("a status line has one judgment: landed first, merged as #n, #n merged or merged <sha>", () => {
 		expect(stale(inventedStatus)).toEqual([]);

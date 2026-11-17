@@ -2764,7 +2764,7 @@ describe("tool query read contract", () => {
 	});
 });
 
-const ATLAS_CURRENT = `Updated: 2026-10-13 17:26, forge-0204b
+const ATLAS_CURRENT = `Updated: 2026-10-13 17:26, forge-1013b
 
 ## Next session
 - First move: read the shelf-map draft review.
@@ -2783,8 +2783,8 @@ const ATLAS_CURRENT = `Updated: 2026-10-13 17:26, forge-0204b
 - **CANDIDATE** [gallery-clock](work/todo/gallery-clock/STATUS.md): the scheduled tick
 
 ## Live sessions
-- forge-0204b: Claude Code, Opus 5.5, Shepherd (Herdr w2:p3Q)
-- forge-0203 retired at 16:00
+- forge-1013b: Claude Code, Opus 5.5, Shepherd (Herdr w2:p3Q)
+- forge-1013 retired at 16:00
 `;
 
 const ATLAS_STATUS = `---
@@ -2840,7 +2840,7 @@ describe("tool query acceptance", () => {
 				schema: 1,
 				revision: 6,
 				written: "2026-10-13T15:25:02-03:00",
-				session: "forge-0204b",
+				session: "forge-1013b",
 				snapshot: "checkpoints/CURRENT.r6",
 				journal: { from: ids[0], to, count: ids.length - 2 },
 				files: hashPaths({ name: "forge", dir, state }, coveredPaths(state)),
@@ -2853,7 +2853,7 @@ describe("tool query acceptance", () => {
 			join(home, ".claude", "sessions", "48213.json"),
 			JSON.stringify({
 				pid: 48213,
-				name: "forge-0204b",
+				name: "forge-1013b",
 				cwd: dir,
 				status: "idle",
 			}),
@@ -2931,14 +2931,14 @@ describe("tool query acceptance", () => {
 		expect(sessions?.json).toMatchObject({
 			prefix: "forge",
 			listed: [
-				{ name: "forge-0204b", retired: false },
-				{ name: "forge-0203", retired: true },
+				{ name: "forge-1013b", retired: false },
+				{ name: "forge-1013", retired: true },
 			],
 			claude: {
 				available: true,
 				sessions: [
 					{
-						name: "forge-0204b",
+						name: "forge-1013b",
 						pid: 48213,
 						listed: { retired: false },
 						prefixMatch: true,

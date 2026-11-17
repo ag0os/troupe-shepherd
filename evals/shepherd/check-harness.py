@@ -1076,7 +1076,8 @@ time.sleep(30)
         prepare.assert_not_called(); launch.assert_not_called()
 
     def test_the_fake_names_a_projects_directory_as_claude_code_does(self):
-        # Expected values follow the CLI's `p0`, with made-up fixture names.
+        # Expected values from the CLI's own `p0`, run unchanged in Bun; the `zz` row is
+        # recomputed with the same function for a made-up path.
         vectors = [
             ('/tmp/x/workspace', '-tmp-x-workspace'),
             ('/' + 'a' * 199, '-' + 'a' * 199),
