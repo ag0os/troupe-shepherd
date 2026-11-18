@@ -1242,14 +1242,15 @@ describe("pending attempts (fix round 1b, ruling D)", () => {
 	});
 
 	test("the fake names a projects directory as Claude Code 2.1.299 does", () => {
-		// Expected values from the CLI's own `p0`, run unchanged in Bun.
+		// Expected values from the CLI's own `p0`, run unchanged in Bun; the `zz` row is
+		// recomputed with the same function for a made-up path.
 		const vectors: [string, string][] = [
 			["/tmp/x/workspace", "-tmp-x-workspace"],
 			[`/${"a".repeat(199)}`, `-${"a".repeat(199)}`],
 			[`/${"a".repeat(200)}`, `-${"a".repeat(199)}-b6ymvl`],
 			[
-				`/private/var/folders/kq/T/${"r".repeat(150)}/shepherd-eval-E-x/workspace`,
-				`-private-var-folders-kq-T-${"r".repeat(150)}-shepherd-eval-E-x-works-t2hkx7`,
+				`/private/var/folders/zz/T/${"r".repeat(150)}/shepherd-eval-E-x/workspace`,
+				`-private-var-folders-zz-T-${"r".repeat(150)}-shepherd-eval-E-x-works-1a7pu9`,
 			],
 			[
 				"/Users/jos\u00e9/\u00fcber/\u{1f600}/workspace",

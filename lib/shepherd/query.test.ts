@@ -950,7 +950,7 @@ const SESSIONS = `Updated: 2026-10-13 17:26, ws-1013
 - **NEXT** [evals](work/in-progress/evals/STATUS.md): the trials
 
 ## Live sessions
-- ws-1013: Claude Code, Opus, Shepherd (Herdr w9:p1M)
+- ws-1013: Claude Code, Opus, Shepherd (Herdr w2:p3Q)
 - ws-1012b retired at 16:00
 - delegate-cdx-1: Codex delegate for evals
 `;
@@ -1049,7 +1049,7 @@ describe("tool query sessions", () => {
 			{
 				name: "ws-1013",
 				line: 7,
-				text: "ws-1013: Claude Code, Opus, Shepherd (Herdr w9:p1M)",
+				text: "ws-1013: Claude Code, Opus, Shepherd (Herdr w2:p3Q)",
 				retired: false,
 				subagent: false,
 				codex: false,
@@ -2764,10 +2764,10 @@ describe("tool query read contract", () => {
 	});
 });
 
-const FORGE_CURRENT = `Updated: 2026-10-13 17:26, forge-1013b
+const ATLAS_CURRENT = `Updated: 2026-10-13 17:26, forge-1013b
 
 ## Next session
-- First move: read the query-tool branch review.
+- First move: read the shelf-map draft review.
 
 ## Legend
 - **NEXT**: agreed, start
@@ -2775,35 +2775,35 @@ const FORGE_CURRENT = `Updated: 2026-10-13 17:26, forge-1013b
 - **ASK**: needs the user
 
 ## Items
-- **NEXT** [shepherd-evals](work/in-progress/shepherd-evals/STATUS.md): forge order (2), the trials
-  in Troupe as a merge gate; agreed 17:41
-- **WAITING** [query-tool](./work/in-progress/query-tool/STATUS.md): branch review by two readers
+- **NEXT** [catalog-labels](work/in-progress/catalog-labels/STATUS.md): invented museum task (2), the label checks
+  in the sample gallery before opening; agreed 17:41
+- **WAITING** [shelf-map](./work/in-progress/shelf-map/STATUS.md): map review by two readers
 - **ASK:** whether the nightly sweep stays
 - **SCHEDULED**: 2026-10-20 rotate the journal
-- **CANDIDATE** [heartbeat](work/todo/heartbeat/STATUS.md): the scheduled tick
+- **CANDIDATE** [gallery-clock](work/todo/gallery-clock/STATUS.md): the scheduled tick
 
 ## Live sessions
-- forge-1013b: Claude Code, Opus 5.5, Shepherd (Herdr w9:p1M)
-- forge-1012 retired at 16:00
+- forge-1013b: Claude Code, Opus 5.5, Shepherd (Herdr w2:p3Q)
+- forge-1013 retired at 16:00
 `;
 
-const FORGE_STATUS = `---
+const ATLAS_STATUS = `---
 state: in-progress
 opened: 2026-10-13
 closed: 2026-10-20        # once done
 blocked_on: "review #2"   # while blocked
 ---
-# shepherd-evals: the Shepherd trials in Troupe as a merge gate
+# catalog-labels: the museum label checks before opening
 
 ## What and origin
-The user, 2026-10-13: trials before merge.
+The fictional curator, 2026-10-13: labels before opening.
 
 ## State
-- trial one green
-- trial two open
+- label one checked
+- label two open
 
 ## Next
-Run trial two.
+Check label two.
 
 ## Next session must know
 Nothing yet.
@@ -2813,21 +2813,21 @@ describe("tool query acceptance", () => {
 	test("answers all six queries on a forge-shaped workspace", async () => {
 		const tree = makeTree({
 			"xdg/shepherd/config.json": "{}",
-			"forge/.shepherd/CURRENT.md": FORGE_CURRENT,
+			"forge/.shepherd/CURRENT.md": ATLAS_CURRENT,
 			"forge/.shepherd/charter.md": "# forge\n\nThe charter.\n",
 			"forge/.shepherd/MEMORY.md": "# Memory\n",
 			"forge/.shepherd/docs/INDEX.md": "# Docs\n",
 			"forge/.shepherd/pending.md": "# Pending\n",
 			"forge/.shepherd/archive/journal/2026-09.md": ARCHIVE,
 			"forge/.shepherd/journal.md": `${JOURNAL}- 13:00 after the checkpoint\n`,
-			"forge/.shepherd/work/in-progress/shepherd-evals/STATUS.md": FORGE_STATUS,
-			"forge/.shepherd/work/in-progress/query-tool/STATUS.md":
-				FORGE_STATUS.replaceAll("shepherd-evals", "query-tool"),
-			"forge/.shepherd/work/todo/heartbeat/STATUS.md": FORGE_STATUS.replace(
+			"forge/.shepherd/work/in-progress/catalog-labels/STATUS.md": ATLAS_STATUS,
+			"forge/.shepherd/work/in-progress/shelf-map/STATUS.md":
+				ATLAS_STATUS.replaceAll("catalog-labels", "shelf-map"),
+			"forge/.shepherd/work/todo/gallery-clock/STATUS.md": ATLAS_STATUS.replace(
 				"state: in-progress",
 				"state: todo",
 			),
-			"forge/.shepherd/work/done/old/STATUS.md": FORGE_STATUS,
+			"forge/.shepherd/work/done/old/STATUS.md": ATLAS_STATUS,
 		});
 		cleanups.push(tree.cleanup);
 		const dir = join(tree.root, "forge");
@@ -2869,9 +2869,9 @@ describe("tool query acceptance", () => {
 		for (const [args, line] of [
 			[
 				["items"],
-				"CURRENT.md:14 WAITING query-tool  query-tool: branch review by two readers",
+				"CURRENT.md:14 WAITING shelf-map  shelf-map: map review by two readers",
 			],
-			[["item", "query-tool"], "work/in-progress/query-tool/STATUS.md"],
+			[["item", "shelf-map"], "work/in-progress/shelf-map/STATUS.md"],
 			[["sessions"], "prefix: forge"],
 			[["autonomy"], "autonomy: off (not set)"],
 			[["journal"], `[since checkpoint ${to}]`],
@@ -2906,21 +2906,21 @@ describe("tool query acceptance", () => {
 				}) => [word, slug, status?.exists ?? null],
 			),
 		).toEqual([
-			["NEXT", "shepherd-evals", true],
-			["WAITING", "query-tool", true],
+			["NEXT", "catalog-labels", true],
+			["WAITING", "shelf-map", true],
 			["ASK", null, null],
 			["SCHEDULED", null, null],
-			["CANDIDATE", "heartbeat", true],
+			["CANDIDATE", "gallery-clock", true],
 		]);
 		expect(item?.json).toMatchObject({
 			resolved: "link",
-			dir: "work/in-progress/query-tool",
+			dir: "work/in-progress/shelf-map",
 			state: "in-progress",
 			status: {
 				frontmatter: {
 					fields: { closed: "2026-10-20", blocked_on: "review #2" },
 				},
-				title: "query-tool: the Shepherd trials in Troupe as a merge gate",
+				title: "shelf-map: the museum label checks before opening",
 			},
 		});
 		expect(
@@ -2932,7 +2932,7 @@ describe("tool query acceptance", () => {
 			prefix: "forge",
 			listed: [
 				{ name: "forge-1013b", retired: false },
-				{ name: "forge-1012", retired: true },
+				{ name: "forge-1013", retired: true },
 			],
 			claude: {
 				available: true,

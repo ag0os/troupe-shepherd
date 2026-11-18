@@ -1036,7 +1036,7 @@ describe("mechanical outcomes are invariant under export (R2)", () => {
 });
 
 describe("escaped slashes (fix round 4, H1)", () => {
-	const ROOT = "/var/folders/kq/abc/T/shepherd-evals-20261013T150000Z-abc123";
+	const ROOT = "/var/folders/zz/abc/T/shepherd-evals-20261013T150000Z-abc123";
 	const BINARY = `${ROOT}/bin/shepherd`;
 	const context = { scratchRoot: ROOT, home: HOME, repoRoot: "/srv/repo" };
 	/** `path` with each slash JSON-escaped once (`\/`) or twice (`\\/`). */

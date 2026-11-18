@@ -10,13 +10,13 @@ YAML, these four fields and no others:
 
 ```yaml
 ---
-component: agency_client_port
+component: museum_catalog_port
 covers:
-  - app/controllers/agency/
-  - app/models/agency/
+  - app/controllers/museum/
+  - app/models/museum/
 depends_on: []
 tests:
-  - test/contracts/agency_client_port/
+  - test/contracts/museum_catalog_port/
 ---
 ```
 
