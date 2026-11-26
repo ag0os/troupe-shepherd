@@ -160,8 +160,8 @@ describe("charter boundary text", () => {
 		);
 	});
 
-	test("core contains exactly 3,398 words", () => {
-		expect(words(readFileSync(join(prompts, "core.md"), "utf8"))).toBe(3398);
+	test("core contains exactly 3,451 words", () => {
+		expect(words(readFileSync(join(prompts, "core.md"), "utf8"))).toBe(3451);
 	});
 
 	test("software references exactly its five declared named slots", () => {
