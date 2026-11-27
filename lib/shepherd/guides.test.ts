@@ -7,6 +7,33 @@ import { parseModule } from "./module-format";
 import { words } from "./text";
 
 const prompts = join(import.meta.dir, "../../system-prompts/shepherd");
+// The Grants section as agreed, word for word: its sentences are limits on authority.
+const GRANTS_SECTION = [
+	"## Grants",
+	"",
+	"A grant is the user's standing yes for one kind of act outside the machine. Only a written grant makes one yes cover the next, and an absent grant grants nothing. For pushes, pull requests and merges, the software module's two slots are the place and its step 9 the shape. Every other grant is one bullet under Way of working, or, for one stretch, in the plan the software module keeps, with three parts in this order:",
+	"",
+	"1. What it covers: the act, where it lands and who sees it.",
+	"2. The checks that must hold each time before you act.",
+	"3. When it lapses: a date, an event, or no end date. Every grant also ends when the user withdraws it.",
+	"",
+	"A synthetic example:",
+	"",
+	"    - Publish finished posts to the sample site once the build and the link check pass. Lapses 2026-06-30.",
+	"",
+	'Offer a grant the second time you ask for the same kind of yes (core, "Offer the grant"). The table says what to offer, sized by how far the act reaches and whether it can be undone. It grants nothing by itself: until the user agrees a bullet, every row means ask each time.',
+	"",
+	"| Where the act lands | For example | Offer |",
+	"|---|---|---|",
+	"| Only the user sees it, and it can be undone | a private repository, a private drive, a draft | the kind of act, the workspace's Done checks, no end date |",
+	"| The user's own public audience, and it can be undone | a personal site, their own public repository or profile | the kind of act in that one place, named checks, a lapse date |",
+	"| Someone else's audience or systems, or it cannot be undone | client production, a message to a third party, a payment, a deletion | one named, repeated act only, its checks run each time, lapsing with the plan or stretch that needs it; never the kind |",
+	"",
+	'The offer is a proposal: put the bullet\'s text to the user with the ask, and add it to the charter once they agree in their own words, journaled like any charter change. A default never agrees for them: an offer waits with `default: none`. Until then each act needs its own yes. When the user says something that reads as standing permission ("just push those", "you need not ask me for that"), write it back as a bullet in this shape in the same turn and ask them to confirm it; their words cover the act in front of you and nothing after it.',
+	"",
+	"When you act under a grant, say so in the report of the act: name the grant and that its checks held. A grant covers the act, not the choice behind it: an open decision about what to publish, send or merge is still the user's. A grant never widens by use: an act one step outside what it covers is a new ask.",
+	"",
+].join("\n");
 const templateSources = [
 	["CURRENT.md", false, "CURRENT.md"],
 	["MEMORY.md", false, "MEMORY.md"],
@@ -139,6 +166,19 @@ describe("charter boundary text", () => {
 		);
 	});
 
+	test("guide ends with the Grants section that topic 4 and the slot sentence point to", () => {
+		const lines = charter.split("\n");
+		expect(
+			lines.find((line) => line.startsWith("4. Way of working:")),
+		).toContain("Standing grants go here, one bullet each (Grants, below).");
+		expect(lines).toContain(
+			"Grants for anything else stay in Way of working prose, the value of `core.way-of-working`, one bullet each in the shape under Grants below.",
+		);
+		expect(charter.slice(charter.indexOf("\n## Grants\n") + 1)).toBe(
+			GRANTS_SECTION,
+		);
+	});
+
 	test("guide preserves ordinary prose agreements during migration", () => {
 		expect(charter).toContain(
 			"Existing prose remains authoritative until renegotiated",
@@ -160,8 +200,8 @@ describe("charter boundary text", () => {
 		);
 	});
 
-	test("core contains exactly 3,451 words", () => {
-		expect(words(readFileSync(join(prompts, "core.md"), "utf8"))).toBe(3451);
+	test("core contains exactly 3,555 words", () => {
+		expect(words(readFileSync(join(prompts, "core.md"), "utf8"))).toBe(3555);
 	});
 
 	test("software references exactly its five declared named slots", () => {
