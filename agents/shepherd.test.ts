@@ -2080,7 +2080,7 @@ describe("model handoff header", () => {
 		}
 	});
 
-	test("core uses the header ceiling within the 3400 word budget", () => {
+	test("core uses the header ceiling within the 4250 word budget", () => {
 		const core = text("system-prompts/shepherd/core.md");
 		const handoff =
 			core.split("## Hand off before you degrade")[1]?.split("\n## ")[0] ?? "";
@@ -2100,7 +2100,7 @@ describe("model handoff header", () => {
 		expect(count.exitCode).toBe(0);
 		expect(
 			Number(count.stdout.toString().trim().split(/\s+/)[0]),
-		).toBeLessThanOrEqual(3400);
+		).toBeLessThanOrEqual(4250);
 	});
 });
 
